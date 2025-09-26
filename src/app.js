@@ -6,6 +6,7 @@ const helmet = require('helmet'); // helmet → Security (protect your backend f
 const morgan = require('morgan'); // morgan → Logging (log HTTP requests for debugging and monitoring). // 	morgan → Visibility (log API calls for debugging & monitoring).
 const config = require('./config');
 const connectDB = require('./config/database');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -19,6 +20,10 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Routes
+
+app.use('/api/auth', authRoutes);
+
 // Test route
 app.get('/health', (req, res) => {
     res.json({ 
@@ -26,6 +31,22 @@ app.get('/health', (req, res) => {
         message: 'Kirana Inventory Server Running',
         timestamp: new Date().toISOString()
       });
+});
+
+// Test protected route
+const { protect } = require('./middleware/auth');
+app.get('/api/test-protected', protect, (req, res) => {
+  console.log("Yeh Protected Route hai... Access Granted!!")
+  res.json({
+    success: true,
+    message: 'Access granted',
+    user: {
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role
+    }
+  });
 });
 
 // Use middleware
