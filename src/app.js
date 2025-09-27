@@ -21,8 +21,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-
+// auth routes
 app.use('/api/auth', authRoutes);
+
+// product routes
+const productRoutes = require('./routes/productRoutes');
+app.use('/api/products', productRoutes);
+
 
 // Test route
 app.get('/health', (req, res) => {
