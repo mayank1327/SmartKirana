@@ -34,6 +34,10 @@ app.use('/api/products', productRoutes);
 const inventoryRoutes = require('./routes/inventoryRoutes');
 app.use('/api/inventory', inventoryRoutes);
 
+// sales routes
+const salesRoutes = require('./routes/salesRoutes');
+app.use('/api/sales', salesRoutes);
+
 
 // Test route
 app.get('/health', (req, res) => {
