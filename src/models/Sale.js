@@ -31,7 +31,7 @@ const saleSchema = new mongoose.Schema({
   saleNumber: {
     type: String,
     unique: true,
-    required: [true, 'Sale number is required']
+    // required: [true, 'Sale number is required']
   },
   items: [saleItemSchema],
   subtotal: {
@@ -108,25 +108,33 @@ saleSchema.index({ saleNumber: 1 });
 
 // Auto-generate sale number
 saleSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const today = new Date();
-    const dateString = today.toISOString().slice(0, 10).replace(/-/g, '');
-    
-    // Find the last sale of the day
-    const lastSale = await this.constructor.findOne({
-      saleNumber: new RegExp(`^SALE-${dateString}-`)
-    }).sort({ saleNumber: -1 });
-    
-    let sequence = 1;
-    if (lastSale) {
-      const lastSequence = parseInt(lastSale.saleNumber.split('-').pop());
-      sequence = lastSequence + 1;
+    if (this.isNew) {
+      try {
+        const today = new Date();
+        const dateString = today.toISOString().slice(0, 10).replace(/-/g, '');
+  
+        // Find last sale of the day
+        const lastSale = await this.constructor.findOne({
+          saleNumber: new RegExp(`^SALE-${dateString}-`)
+        }).sort({ saleNumber: -1 });
+  
+        let sequence = 1;
+        if (lastSale) {
+          const lastSeq = parseInt(lastSale.saleNumber.split('-').pop());
+          sequence = lastSeq + 1;
+        }
+  
+        this.saleNumber = `SALE-${dateString}-${sequence.toString().padStart(3, '0')}`;
+       
+        next();
+      } catch (err) {
+        console.error('Error generating saleNumber:', err);
+        next(err); // Pass error to Mongoose error handler
+      }
+    } else {
+      next();
     }
-    
-    this.saleNumber = `SALE-${dateString}-${sequence.toString().padStart(3, '0')}`;
-  }
-  next();
-});
+  });
 
 // Virtual for profit calculation
 saleSchema.virtual('totalProfit').get(function() {
