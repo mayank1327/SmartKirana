@@ -21,12 +21,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+
 // auth routes
 app.use('/api/auth', authRoutes);
 
 // product routes
 const productRoutes = require('./routes/productRoutes');
 app.use('/api/products', productRoutes);
+
+
+// invventory routes
+const inventoryRoutes = require('./routes/inventoryRoutes');
+app.use('/api/inventory', inventoryRoutes);
 
 
 // Test route
