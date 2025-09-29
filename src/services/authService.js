@@ -26,7 +26,7 @@ class AuthService {
 
   // Login existing user
   async loginUser({ email, password }) {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+password'); // What this .select(..) do ? 
     if (!user || !(await user.comparePassword(password))) {
       throw new Error('Invalid credentials');
     }

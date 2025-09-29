@@ -11,18 +11,21 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Email is required'],
     unique: true,
+    index: true,
     lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter valid email']
+    // match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter valid email'] // it's fails some valid email
+    match: [/.+@.+\..+/, 'Please enter a valid email'] // Most of the devs prefer this and joi validation for complex
   },
   password: {
     type: String,
     required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters']
+    minlength: [6, 'Password must be at least 6 characters'],
+    select: false // to exclude password field in queries by default
   },
   role: {
     type: String,
-    enum: ['owner', 'staff'],
-    default: 'owner'
+    enum: ['owner', 'staff', 'manager'],
+    required : [true, 'Role is required']
   }
 }, {
   timestamps: true
