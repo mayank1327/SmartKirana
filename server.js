@@ -12,5 +12,5 @@ connectDB(config.MONGODB_URI)
   })
   .catch((err) => {
     console.error('❌ Failed to connect to DB. Server not started.', err.message);
-    process.exit(1);
+    process.exit(1); 
   });
