@@ -47,14 +47,11 @@ const reportRoutes = require('./routes/reportRoutes');
 app.use('/api/reports', reportRoutes);
 
 
-// Test route
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        message: 'Kirana Inventory Server Running',
-        timestamp: new Date().toISOString()
-      });
-});
+// health route
+const healthRoutes = require('./routes/healthRoutes');
+app.use('/api', healthRoutes);
+
+
 
 // Test protected route
 const { protect } = require('./middleware/auth');
