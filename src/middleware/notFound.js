@@ -1,8 +1,8 @@
 const notFound = (req, res) => {
-    console.log("found nahi ho rha hai...")
+    console.log("notFound.js wali file right!! ");
     res.status(404).json({
       success: false,
-      error: 'Route not found'
+      error: 'Yeh page uplabhd nahi hai - Not Found'
     });
   };
   

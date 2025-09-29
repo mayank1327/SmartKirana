@@ -3,7 +3,7 @@
 const express = require('express');
 const cors = require('cors');      // cors → Security (allow cross-origin requests). cors → Accessibility (allow frontend & backend to communicate safely).
 const helmet = require('helmet'); // helmet → Security (protect your backend from common attacks).
-const morgan = require('morgan'); // morgan → Logging (log HTTP requests for debugging and monitoring). // 	morgan → Visibility (log API calls for debugging & monitoring).
+const morgan = require('morgan'); // morgan → Logging (log HTTP requests for debugging and monitoring). // Logging middleware (who hit API, status code, response time).
 
 
 const app = express();

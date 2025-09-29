@@ -7,7 +7,7 @@ connectDB(config.MONGODB_URI)
   .then(() => {
     // Start server only if DB connected
     app.listen(config.PORT, () => {
-      console.log(`🚀 Server running in ${config.NODE_ENV} mode on port ${config.PORT}`);
+      console.log(`🚀 Server running in ${config.NODE_ENV} mode on port ${config.PORT} from server.js`);
     });
   })
   .catch((err) => {
