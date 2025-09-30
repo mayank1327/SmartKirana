@@ -5,21 +5,17 @@ class ProductService {
   async getAllProducts(query = {}) {
     const { search, category, lowStock, page = 1, limit = 10 } = query;
     
-    let filter = { isActive: true };
+    let filter = this.getActiveFilter();
     
     // Search by name (text search)
-    if (search) {
-      filter.$text = { $search: search };
-    }
+    if (search) filter.$text = { $search: search };
     
     // Filter by category
-    if (category) {
-      filter.category = category;
-    }
+    if (category) filter.category = category;
     
     // Filter low stock items
     if (lowStock === 'true') {
-      filter.$expr = { $lte: ['$currentStock', '$minStockLevel'] };
+      filter.isLowStock = true;
     }
     
     const skip = (page - 1) * limit;
@@ -36,7 +32,7 @@ class ProductService {
       ...p.toObject(),
       profitMargin: this.calculateProfitMargin(p),
       profitMarginPercentage: this.calculateProfitPercentage(p),
-      isLowStock: this.needsLowStockAlert(p),
+      isLowStock: p.isLowStock,
     }));
 
     
@@ -52,53 +48,63 @@ class ProductService {
   
   // Get single product by ID
   async getProductById(id) {
-    const product = await Product.findById(id);
-    if (!product || !product.isActive) {
+    const product = await Product.findById(this.getActiveFilter({ _id: id }));
+    if (!product) {
       throw new Error('Product not found');
     }
     return {
       ...product.toObject(),
       profitMargin: this.calculateProfitMargin(product),
       profitMarginPercentage: this.calculateProfitPercentage(product),
-      isLowStock: this.needsLowStockAlert(product),
+      isLowStock: product.isLowStock
     };
   }
   
   // Create new product
   async createProduct(productData) {
     // Check if product with same name exists
-    const existingProduct = await Product.findOne({ 
-      name: productData.name, 
-      isActive: true 
-    });
+    const existingProduct = await Product.findOne(
+      this.getActiveFilter({ name: productData.name })
+    );
     
     if (existingProduct) {
       throw new Error('Product with this name already exists');
     }
     
-    const product = await Product.create(productData);
+    const product = await Product.create({
+    ...productData,
+     isLowStock: productData.currentStock <= productData.minStockLevel,
+    });
+
+
     return product;
   }
   
   // Update product
   async updateProduct(id, updateData) {
-    const product = await Product.findByIdAndUpdate(
-      id, 
-      updateData, 
-      { new: true, runValidators: true }
-    );
-    
+
+    const product = await Product.findById(this.getActiveFilter({ _id: id }));
     if (!product || !product.isActive) {
-      throw new Error('Product not found');
+       throw new Error('Product not found');
     }
-    
-    return {
-      ...product.toObject(),
-      profitMargin: this.calculateProfitMargin(product),
-      profitMarginPercentage: this.calculateProfitPercentage(product),
-      isLowStock: this.needsLowStockAlert(product),
-    };
-  }
+
+     Object.assign(product, updateData);
+
+    if ('currentStock' in updateData || 'minStockLevel' in updateData) {
+       product.isLowStock = product.currentStock <= product.minStockLevel;
+    }
+
+   // Save updated document
+    await product.save();
+
+   // Add computed fields for service response
+  return {
+    ...product.toObject(),
+    profitMargin: product.sellingPrice - product.costPrice,
+    profitPercentage: product.costPrice ? ((product.sellingPrice - product.costPrice) / product.costPrice) * 100 : 0,
+    isLowStock: product.isLowStock
+  };
+}
   
   // Soft delete product
   async deleteProduct(id) {
@@ -117,16 +123,15 @@ class ProductService {
   
   // Get low stock products
   async getLowStockProducts() {
-    const products = await Product.find({
-      isActive: true,
-      $expr: { $lte: ['$currentStock', '$minStockLevel'] }
-    }).sort({ currentStock: 1 });
+    const products = await Product.find(
+      this.getActiveFilter({ isLowStock: true })
+    ).sort({ currentStock: 1 });
     
     return products.map((p) => ({
       ...p.toObject(),
       profitMargin: this.calculateProfitMargin(p),
       profitMarginPercentage: this.calculateProfitPercentage(p),
-      isLowStock: this.needsLowStockAlert(p),
+      isLowStock: p.isLowStock,
     }));
   }
 
@@ -141,10 +146,16 @@ class ProductService {
     return ((product.sellingPrice - product.costPrice) / product.costPrice) * 100;
   }
 
-  // Helper to check if low stock alert is needed
-  needsLowStockAlert(product) {
-    return product.currentStock <= product.minStockLevel;
+  // Centralized filter for active products
+   getActiveFilter(extra = {}) {
+    return { isActive: true, ...extra };
   }
+
 }
 
 module.exports = new ProductService();
+
+// TODO: Future improvement
+// 1. Move all DB calls to ProductRepository to separate persistence from business logic.
+// 2. Consider MongoDB aggregation pipelines for profit/stock computations for large datasets.
+// 3. Add event-driven notifications for low stock items instead of just returning a flag.
