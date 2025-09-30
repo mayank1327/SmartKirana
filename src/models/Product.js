@@ -19,10 +19,18 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Cost price is required'],
     min: [0, 'Cost price must be positive']
   },
+  
   sellingPrice: {
     type: Number,
     required: [true, 'Selling price is required'],
-    min: [0, 'Selling price must be positive']
+    min: [0, 'Selling price must be positive'],
+    validate: { // Nested validation to ensure sellingPrice >= costPrice
+      validator: function() {
+        return this.sellingPrice >= this.costPrice;
+      },
+      message: 'Selling price must be greater than or equal to cost price'
+    }
+    
   },
   currentStock: {
     type: Number,
