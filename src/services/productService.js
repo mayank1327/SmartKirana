@@ -20,12 +20,24 @@ class ProductService {
     
     const skip = (page - 1) * limit;
     
-    const products = await Product.find(filter)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .sort({ createdAt: -1 });
+    const result = await Product.aggregate([  // Aggregation pipeline for pagination and filtering
+      { $match: { ...filter } },
+      {
+        $facet: {
+          paginatedResults: [
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: parseInt(limit) }
+          ],
+          totalCount: [
+            { $count: 'count' }
+          ]
+        }
+      }
+    ]);
     
-    const total = await Product.countDocuments(filter);
+    const products = result[0].paginatedResults;
+    const total = result[0].totalCount[0]?.count || 0;
 
      // 👉 Add computed values at service layer
      const enrichedProducts = products.map((p) => ({
@@ -73,7 +85,7 @@ class ProductService {
     
     const product = await Product.create({
     ...productData,
-     isLowStock: productData.currentStock <= productData.minStockLevel,
+     isLowStock: this.calculateisLowStock(productData), // Determine low stock status on creation
     });
 
 
@@ -91,7 +103,7 @@ class ProductService {
      Object.assign(product, updateData);
 
     if ('currentStock' in updateData || 'minStockLevel' in updateData) {
-       product.isLowStock = product.currentStock <= product.minStockLevel;
+       product.isLowStock = this.calculateisLowStock(product);
     }
 
    // Save updated document
@@ -100,8 +112,8 @@ class ProductService {
    // Add computed fields for service response
   return {
     ...product.toObject(),
-    profitMargin: product.sellingPrice - product.costPrice,
-    profitPercentage: product.costPrice ? ((product.sellingPrice - product.costPrice) / product.costPrice) * 100 : 0,
+    profitMargin: this.calculateProfitMargin(product),
+    profitPercentage: this.calculateProfitPercentage(product),
     isLowStock: product.isLowStock
   };
 }
@@ -149,6 +161,11 @@ class ProductService {
   // Centralized filter for active products
    getActiveFilter(extra = {}) {
     return { isActive: true, ...extra };
+  }
+
+  // isLowStock is handled in create/update methods
+  calculateisLowStock(product) {
+    return product.currentStock <= product.minStockLevel;
   }
 
 }
