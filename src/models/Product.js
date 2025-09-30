@@ -7,7 +7,7 @@ const productSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Product name cannot exceed 100 characters']
   },
-  category: {
+  category: { // TODO: Consider migrating categories/units to separate collections for flexibility and admin management
     type: String,
     required: [true, 'Category is required'],
     trim: true,
@@ -19,7 +19,7 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Cost price is required'],
     min: [0, 'Cost price must be positive']
   },
-  
+
   sellingPrice: {
     type: Number,
     required: [true, 'Selling price is required'],
@@ -63,14 +63,11 @@ productSchema.index({ name: 'text', category: 'text' });
 productSchema.index({ category: 1 });
 productSchema.index({ currentStock: 1 });
 
-// Virtual for profit margin
-productSchema.virtual('profitMargin').get(function() {
-  return this.sellingPrice - this.costPrice;
-});
+// TODO: Future refinement:
+// 1. Consider partial indexes for low stock queries to improve performance.
+//    e.g., { currentStock: 1 }, { partialFilterExpression: { isActive: true } }
+// 2. Consider compound indexes if queries combine multiple fields frequently.
+// 3. Currently using text index on name+category for MVP; later might split or optimize.
 
-// Virtual for low stock status
-productSchema.virtual('isLowStock').get(function() {
-  return this.currentStock <= this.minStockLevel;
-});
 
 module.exports = mongoose.model('Product', productSchema);
