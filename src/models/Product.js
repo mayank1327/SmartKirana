@@ -64,11 +64,10 @@ const productSchema = new mongoose.Schema({
 });
 
 // Indexes for better search performance
-productSchema.index({ name: 'text', category: 'text' , isActive : 'true'});
-productSchema.index({ category: 1 });
-productSchema.index({ currentStock: 1 });
+productSchema.index({ name: 'text', category: 'text' }); // Text index for search functionality
+productSchema.index({ currentStock: 1 }, { partialFilterExpression: { isActive: true, isLowStock: true } }); // Index for low stock queries and active products
 // At the end of your schema, after other indexes
-productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ category: 1, isActive: 1 }); 
 // Ensure unique active product names (soft delete aware)
 productSchema.index(
   { name: 1 },
