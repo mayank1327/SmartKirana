@@ -30,9 +30,18 @@ class ProductService {
       .sort({ createdAt: -1 });
     
     const total = await Product.countDocuments(filter);
+
+     // 👉 Add computed values at service layer
+     const enrichedProducts = products.map((p) => ({
+      ...p.toObject(),
+      profitMargin: this.calculateProfitMargin(p),
+      profitMarginPercentage: this.calculateProfitPercentage(p),
+      isLowStock: this.needsLowStockAlert(p),
+    }));
+
     
     return {
-      products,
+      products: enrichedProducts,
       pagination: {
         current: parseInt(page),
         pages: Math.ceil(total / limit),
@@ -47,7 +56,12 @@ class ProductService {
     if (!product || !product.isActive) {
       throw new Error('Product not found');
     }
-    return product;
+    return {
+      ...product.toObject(),
+      profitMargin: this.calculateProfitMargin(product),
+      profitMarginPercentage: this.calculateProfitPercentage(product),
+      isLowStock: this.needsLowStockAlert(product),
+    };
   }
   
   // Create new product
@@ -78,7 +92,12 @@ class ProductService {
       throw new Error('Product not found');
     }
     
-    return product;
+    return {
+      ...product.toObject(),
+      profitMargin: this.calculateProfitMargin(product),
+      profitMarginPercentage: this.calculateProfitPercentage(product),
+      isLowStock: this.needsLowStockAlert(product),
+    };
   }
   
   // Soft delete product
@@ -103,7 +122,28 @@ class ProductService {
       $expr: { $lte: ['$currentStock', '$minStockLevel'] }
     }).sort({ currentStock: 1 });
     
-    return products;
+    return products.map((p) => ({
+      ...p.toObject(),
+      profitMargin: this.calculateProfitMargin(p),
+      profitMarginPercentage: this.calculateProfitPercentage(p),
+      isLowStock: this.needsLowStockAlert(p),
+    }));
+  }
+
+  // Helper to calculate profit margin
+  calculateProfitMargin(product) {
+    return product.sellingPrice - product.costPrice;
+  }
+
+  // Helper to calculate profit margin percentage
+  calculateProfitPercentage(product) {
+    if (product.costPrice === 0) return 0;
+    return ((product.sellingPrice - product.costPrice) / product.costPrice) * 100;
+  }
+
+  // Helper to check if low stock alert is needed
+  needsLowStockAlert(product) {
+    return product.currentStock <= product.minStockLevel;
   }
 }
 
