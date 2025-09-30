@@ -48,8 +48,8 @@ app.use('/api', healthRoutes);
 
 
 // Test protected route
-const { protect } = require('./middleware/auth');
-app.get('/api/test-protected', protect, (req, res) => {
+const { protect, authorize } = require('./middleware/auth');
+app.get('/api/test-protected', protect, authorize('owner'), (req, res) => {
   console.log("Yeh Protected Route hai... Access Granted!!")
   res.json({
     success: true,
