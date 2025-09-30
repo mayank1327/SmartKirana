@@ -1,4 +1,4 @@
-const Product = require('../models/Product');
+const productRepository = require('../repositories/productRepository');
 
 class ProductService {
   // Get all products with search and filtering
@@ -17,27 +17,8 @@ class ProductService {
     if (lowStock === 'true') {
       filter.isLowStock = true;
     }
-    
-    const skip = (page - 1) * limit;
-    
-    const result = await Product.aggregate([  // Aggregation pipeline for pagination and filtering
-      { $match: { ...filter } },
-      {
-        $facet: {
-          paginatedResults: [
-            { $sort: { createdAt: -1 } },
-            { $skip: skip },
-            { $limit: parseInt(limit) }
-          ],
-          totalCount: [
-            { $count: 'count' }
-          ]
-        }
-      }
-    ]);
-    
-    const products = result[0].paginatedResults;
-    const total = result[0].totalCount[0]?.count || 0;
+    // Fetch from repository with pagination
+    const { products, total } = await productRepository.findAll(filter, { page, limit, sort: { createdAt: -1 } });
 
      // 👉 Add computed values at service layer
      const enrichedProducts = products.map((p) => ({
@@ -60,9 +41,11 @@ class ProductService {
   
   // Get single product by ID
   async getProductById(id) {
-    const product = await Product.findById(this.getActiveFilter({ _id: id }));
+
+    const product = await productRepository.findById(id , this.getActiveFilter()); // Ensure only active products
+
     if (!product) {
-      throw new Error('Product not found');
+      throw new Error('Product not found'); // Better to use custom error classes in real apps
     }
     return {
       ...product.toObject(),
@@ -75,17 +58,17 @@ class ProductService {
   // Create new product
   async createProduct(productData) {
     // Check if product with same name exists
-    const existingProduct = await Product.findOne(
-      this.getActiveFilter({ name: productData.name })
+    const existingProduct = await productRepository.findOne(
+      { name: productData.name }, this.getActiveFilter()// Only consider active products
     );
-    
+  
     if (existingProduct) {
-      throw new Error('Product with this name already exists');
+      throw new Error('Product with this name already exists'); // Better to use custom error classes in real apps
     }
     
-    const product = await Product.create({
+    const product = await productRepository.create({
     ...productData,
-     isLowStock: this.calculateisLowStock(productData), // Determine low stock status on creation
+      isLowStock: this.calculateisLowStock(productData), // Determine low stock status on creation
     });
 
 
@@ -94,20 +77,16 @@ class ProductService {
   
   // Update product
   async updateProduct(id, updateData) {
-
-    const product = await Product.findById(this.getActiveFilter({ _id: id }));
-    if (!product || !product.isActive) {
-       throw new Error('Product not found');
-    }
-
-     Object.assign(product, updateData);
-
+    
     if ('currentStock' in updateData || 'minStockLevel' in updateData) {
-       product.isLowStock = this.calculateisLowStock(product);
+        updateData.isLowStock = this.calculateisLowStock(updateData);
     }
+    
+    const product = await productRepository.updateById( id , updateData , this.getActiveFilter()) // ensures only active products are updated)); 
 
-   // Save updated document
-    await product.save();
+    if (!product) {
+       throw new Error('Product not found'); // Better to use custom error classes in real apps
+    }
 
    // Add computed fields for service response
   return {
@@ -120,11 +99,7 @@ class ProductService {
   
   // Soft delete product
   async deleteProduct(id) {
-    const product = await Product.findByIdAndUpdate(
-      id, 
-      { isActive: false }, 
-      { new: true }
-    );
+    const product = await productRepository.softDeleteById(id);
     
     if (!product) {
       throw new Error('Product not found');
@@ -135,7 +110,7 @@ class ProductService {
   
   // Get low stock products
   async getLowStockProducts() {
-    const products = await Product.find(
+    const products = await productRepository.findLowStock(
       this.getActiveFilter({ isLowStock: true })
     ).sort({ currentStock: 1 });
     
