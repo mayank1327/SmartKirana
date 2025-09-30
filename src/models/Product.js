@@ -44,7 +44,7 @@ const productSchema = new mongoose.Schema({
     min: [0, 'Minimum stock level must be positive'],
     default: 10
   },
-  unit: {
+  unit: { // read above categories TODO
     type: String,
     required: [true, 'Unit is required'],
     enum: ['piece', 'kg', 'liter', 'packet', 'box'],
@@ -53,6 +53,11 @@ const productSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isLowStock: {
+    type: Boolean,
+    default: false,
+    index: true // Index to quickly find products needing restock
   }
 }, {
   timestamps: true
@@ -62,6 +67,8 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ name: 'text', category: 'text' });
 productSchema.index({ category: 1 });
 productSchema.index({ currentStock: 1 });
+// At the end of your schema, after other indexes
+productSchema.index({ category: 1, isActive: 1 });
 
 // TODO: Future refinement:
 // 1. Consider partial indexes for low stock queries to improve performance.
