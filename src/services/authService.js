@@ -1,17 +1,20 @@
 // src/services/authService.js
 const User = require('../models/User');
 const  generateToken = require('../utils/jwt');
+const userRepository = require('../repositories/userRepository'); // Import the user repository
 
 class AuthService {
   // Register a new user
   async registerUser({ name, email, password, role }) {
-    const existingUser = await User.findOne({ email });
+    const existingUser = await userRepository.findByEmail(email); 
+
     if (existingUser) {
-      throw new Error('User already exists');
+      throw new Error('User already exists'); // Better to use custom error classes in real apps
     }
 
-    const user = await User.create({ name, email, password, role });
-    const token = generateToken(user._id);
+    const user = await userRepository.create({ name, email, password, role });
+
+    const token = generateToken(user._id); 
 
     return {
       token,
@@ -26,9 +29,11 @@ class AuthService {
 
   // Login existing user
   async loginUser({ email, password }) {
-    const user = await User.findOne({ email }).select('+password'); // What this .select(..) do ? 
+
+    const user = await userRepository.findByEmail(email, true); // Include password for comparison
+
     if (!user || !(await user.comparePassword(password))) {
-      throw new Error('Invalid credentials');
+      throw new Error('Invalid credentials'); // Better to use custom error classes in real apps
     }
 
     const token = generateToken(user._id);
