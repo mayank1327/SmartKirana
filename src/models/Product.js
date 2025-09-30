@@ -64,11 +64,16 @@ const productSchema = new mongoose.Schema({
 });
 
 // Indexes for better search performance
-productSchema.index({ name: 'text', category: 'text' });
+productSchema.index({ name: 'text', category: 'text' , isActive : 'true'});
 productSchema.index({ category: 1 });
 productSchema.index({ currentStock: 1 });
 // At the end of your schema, after other indexes
 productSchema.index({ category: 1, isActive: 1 });
+// Ensure unique active product names (soft delete aware)
+productSchema.index(
+  { name: 1 },
+  { unique: true, partialFilterExpression: { isActive: true } }
+);
 
 // TODO: Future refinement:
 // 1. Consider partial indexes for low stock queries to improve performance.
