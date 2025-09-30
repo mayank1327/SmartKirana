@@ -1,20 +1,21 @@
 // src/services/authService.js
-const User = require('../models/User');
-const  generateToken = require('../utils/jwt');
+
+const  generateToken = require('../utils/jwt'); // JWT utility for token generation
 const userRepository = require('../repositories/userRepository'); // Import the user repository
 
 class AuthService {
   // Register a new user
   async registerUser({ name, email, password, role }) {
-    const existingUser = await userRepository.findByEmail(email); 
+
+    const existingUser = await userRepository.findByEmail(email); // Check if user already exists
 
     if (existingUser) {
       throw new Error('User already exists'); // Better to use custom error classes in real apps
     }
 
-    const user = await userRepository.create({ name, email, password, role });
+    const user = await userRepository.create({ name, email, password, role }); // Create new user
 
-    const token = generateToken(user._id); 
+    const token = generateToken(user._id); // Generate JWT token
 
     return {
       token,
@@ -32,11 +33,11 @@ class AuthService {
 
     const user = await userRepository.findByEmail(email, true); // Include password for comparison
 
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user || !(await user.comparePassword(password))) { // Validate password
       throw new Error('Invalid credentials'); // Better to use custom error classes in real apps
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user._id); // Generate JWT token
 
     return {
       token,
