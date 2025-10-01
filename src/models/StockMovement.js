@@ -15,7 +15,7 @@ const stockMovementSchema = new mongoose.Schema({
   quantity: {
     type: Number,
     required: [true, 'Quantity is required'],
-    min: [0, 'Quantity must be positive']
+    min: [1, 'Quantity must be positive'] // Quantity should always be positive; direction is indicated by movementType
   },
   previousStock: {
     type: Number,
@@ -57,6 +57,9 @@ stockMovementSchema.index({ product: 1, createdAt: -1 });
 stockMovementSchema.index({ movementType: 1 });
 stockMovementSchema.index({ reason: 1 });
 stockMovementSchema.index({ performedBy: 1 });
+
+// Add this for common queries
+stockMovementSchema.index({ product: 1, movementType: 1, createdAt: -1 });
 
 // Virtual for movement direction
 stockMovementSchema.virtual('movementDirection').get(function() {
