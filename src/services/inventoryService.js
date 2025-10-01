@@ -1,10 +1,13 @@
-const Product = require('../models/Product');
-const StockMovement = require('../models/StockMovement');
+const mongoose = require('mongoose'); // For transactions if needed
+const inventoryRepository = require('../repositories/inventoryRepository');
 
 class InventoryService {
   // Update stock with movement tracking
   async updateStock(productId, quantity, movementType, reason, userId, reference = '', notes = '') {
-    const product = await Product.findById(productId);
+    const session = await mongoose.startSession();
+    try {
+    return await session.withTransaction(async () => {
+    const product = await inventoryRepository.findProductById(productId, session);
     if (!product || !product.isActive) {
       throw new Error('Product not found');
     }
@@ -28,10 +31,11 @@ class InventoryService {
 
     // Update product stock
     product.currentStock = newStock;
-    await product.save();
+    product.isLowStock = newStock <= product.minStockLevel; // Update low stock flag
+    await inventoryRepository.save(product, session);
 
     // Create stock movement record
-    const stockMovement = await StockMovement.create({
+    const stockMovement = await inventoryRepository.createStockMovement({
       product: productId,
       movementType,
       quantity: movementType === 'ADJUSTMENT' ? Math.abs(newStock - previousStock) : quantity,
@@ -41,13 +45,18 @@ class InventoryService {
       reference,
       notes,
       performedBy: userId
-    });
+    }, session);
 
     return {
       product,
       stockMovement
     };
-  }
+  
+  });
+} finally {
+   session.endSession();
+}
+}
 
   // Add stock (purchase/return)
   async addStock(productId, quantity, reason, userId, reference = '', notes = '') {
@@ -68,13 +77,12 @@ class InventoryService {
   async getStockHistory(productId, limit = 20, page = 1) {
     const skip = (page - 1) * limit;
     
-    const movements = await StockMovement.find({ product: productId })
-      .populate('performedBy', 'name email')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    const movements = await inventoryRepository.findStockMovements(
+      { product: productId }, 
+      { skip, limit: parseInt(limit), sort: { createdAt: -1 } }
+    )
 
-    const total = await StockMovement.countDocuments({ product: productId });
+    const total = await inventoryRepository.countStockMovements({ product: productId });
 
     return {
       movements,
@@ -88,7 +96,7 @@ class InventoryService {
 
   // Get stock summary for all products
   async getStockSummary() {
-    const products = await Product.find({ isActive: true })
+    const products = await inventoryRepository.findProduct({ isActive: true })
       .select('name currentStock minStockLevel category')
       .sort({ name: 1 });
 
@@ -120,7 +128,7 @@ class InventoryService {
 
   // Get recent stock movements (all products)
   async getRecentMovements(limit = 50) {
-    const movements = await StockMovement.find()
+    const movements = await inventoryRepository.findStockMovements()
       .populate('product', 'name category')
       .populate('performedBy', 'name')
       .sort({ createdAt: -1 })
