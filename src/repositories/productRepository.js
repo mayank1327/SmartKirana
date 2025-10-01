@@ -1,14 +1,30 @@
 const Product = require('../models/Product');
 
 class ProductRepository {
-  // Fetch product by ID
-  async findById(id, extraFilters = {}) {
-    return Product.findOne({ _id: id, ...extraFilters });
-  }
 
-  // Fetch product by name
-  async findByName(name, extraFilters = {}) {
-    return Product.findOne({ name, ...extraFilters });
+// Find multiple products with filters, pagination, sorting
+async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 } } = {}) { 
+
+  const skip = (page - 1) * limit;
+
+  const products = await Product.find(filters)
+    .sort(sort)
+    .skip(skip)
+    .limit(parseInt(limit));
+  
+
+    const total = await Product.countDocuments(filters);
+  return { products, total };
+}
+
+async findById(filter) {
+    return Product.findById(filter);
+}
+
+
+  // Fetch product by name & id 
+  async findOne(filter) {
+    return Product.findOne(filter);
   }
 
   // Create new product
@@ -16,42 +32,24 @@ class ProductRepository {
     return Product.create(productData);
   }
 
-  // Update product by ID
-  async updateById(id, updateData, options = { new: true }) {
-    return Product.findByIdAndUpdate(id, updateData, options);
-  }
 
   // Soft delete product
-  async softDeleteById(id) {
+  async softDelete(id) {
     return Product.findByIdAndUpdate(id, { isActive: false }, { new: true });
   }
 
-  // Find multiple products with filters, pagination, sorting
-  async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 } } = {}) {
-    const skip = (page - 1) * limit;
-    const result = await Product.aggregate([
-      { $match: filters },
-      {
-        $facet: {
-          paginatedResults: [
-            { $sort: sort },
-            { $skip: skip },
-            { $limit: parseInt(limit) }
-          ],
-          totalCount: [{ $count: 'count' }]
-        }
-      }
-    ]);
-
-    const products = result[0].paginatedResults;
-    const total = result[0].totalCount[0]?.count || 0;
-
-    return { products, total };
+  async save(product) {
+    return product.save();
   }
 
   // Find low stock products
   async findLowStock(extraFilters = {}) {
     return Product.find({ isLowStock: true, ...extraFilters }).sort({ currentStock: 1 });
+  }
+
+  // Count documents matching a filter
+  async countDocuments(filter) {
+    return Product.countDocuments(filter);
   }
 }
 
