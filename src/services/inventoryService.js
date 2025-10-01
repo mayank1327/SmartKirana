@@ -66,8 +66,8 @@ class InventoryService {
   }
 
   // Reduce stock (sale/damage)
-  async reduceStock(productId, quantity, reason, userId, reference = '', notes = '') {
-    return this.updateStock(productId, quantity, 'OUT', reason, userId, reference, notes);
+  async reduceStock(productId, quantity, reason, userId, reference = '', notes = '', session = null) {
+    return this.updateStock(productId, quantity, 'OUT', reason, userId, reference, notes, session);
   }
 
   // Adjust stock (correction)
