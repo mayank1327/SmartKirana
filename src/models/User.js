@@ -9,9 +9,9 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    index: true,
+    required: [true, 'Email is required'], // Validation ->  Mongoose validates before saving
+    unique: true, // DB constraint ->  MongoDB enforces at DB level (prevents duplicates)
+    index: true,  // Performance optimization -> Faster queries on email (for login lookups)
     lowercase: true,
     // match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter valid email'] // it's fails some valid email
     match: [/.+@.+\..+/, 'Please enter a valid email'] // Most of the devs prefer this and joi validation for complex
@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters'],
-    select: false // to exclude password field in queries by default
+    select: false // CRITICAL: Excludes from queries by default
   },
   role: {
     type: String,
@@ -33,13 +33,13 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+  if (!this.isModified('password')) return next(); // Only hash if password is modified or new
+  this.password = await bcrypt.hash(this.password, 12); // Hashing password with salt of 12 rounds
   next();
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+// Compare password method  // Password comparison is core domain logic (always needed)
+userSchema.methods.comparePassword = async function(candidatePassword) { 
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
