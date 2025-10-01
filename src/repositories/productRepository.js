@@ -17,12 +17,12 @@ async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 } } =
   return { products, total };
 }
 
+// Fetch product by ID
 async findById(filter) {
     return Product.findById(filter);
 }
 
-
-  // Fetch product by name & id 
+  // Fetch product by name or other unique fields
   async findOne(filter) {
     return Product.findOne(filter);
   }
@@ -31,7 +31,6 @@ async findById(filter) {
   async create(productData) {
     return Product.create(productData);
   }
-
 
   // Soft delete product
   async softDelete(id) {
