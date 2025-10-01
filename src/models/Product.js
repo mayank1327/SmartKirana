@@ -65,6 +65,7 @@ const productSchema = new mongoose.Schema({
 
 // Indexes for better search performance
 productSchema.index({ name: 'text', category: 'text' }); // Text index for search functionality
+productSchema.index({category: 1}); // Index for category filtering
 productSchema.index({ currentStock: 1 }, { partialFilterExpression: { isActive: true, isLowStock: true } }); // Index for low stock queries and active products
 // At the end of your schema, after other indexes
 productSchema.index({ category: 1, isActive: 1 }); 
