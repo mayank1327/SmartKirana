@@ -162,7 +162,7 @@ class PurchaseService {
     return purchase;
   }
 
-  // Update payment status // here we also adding transaction session if required
+  // Update payment status // here we also adding transaction session 
   async updatePaymentStatus(purchaseId, paymentData) {
     const { paidAmount, paymentStatus, notes } = paymentData;
     
