@@ -1,20 +1,18 @@
-const Product = require('../models/Product');
-const Sale = require('../models/Sale');
-const Purchase = require('../models/Purchase');
-const StockMovement = require('../models/StockMovement');
+const reportRepository = require('../repositories/reportRepository');
 
 class ReportService {
   // Get comprehensive dashboard statistics
   async getDashboardStats() {
     const today = new Date();
-    const startOfToday = new Date(today.setHours(0, 0, 0, 0));
-    const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
     
     // Get current month start
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
     // Product statistics
-    const productStats = await Product.aggregate([
+    const productStats = await reportRepository.aggregateProducts([
       { $match: { isActive: true } },
       {
         $group: {
@@ -38,7 +36,7 @@ class ReportService {
     ]);
 
     // Today's sales statistics
-    const todaySales = await Sale.aggregate([
+    const todaySales = await reportRepository.aggregateSales([
       {
         $match: {
           saleDate: { $gte: startOfToday, $lte: endOfToday }
@@ -65,7 +63,7 @@ class ReportService {
     ]);
 
     // Monthly statistics
-    const monthlySales = await Sale.aggregate([
+    const monthlySales = await reportRepository.aggregateSales([
       {
         $match: {
           saleDate: { $gte: startOfMonth }
@@ -81,7 +79,7 @@ class ReportService {
     ]);
 
     // Pending payments
-    const pendingPayments = await Purchase.aggregate([
+    const pendingPayments = await reportRepository.aggregatePurchases([
       {
         $match: {
           paymentStatus: { $in: ['pending', 'partial'] }
@@ -125,18 +123,15 @@ class ReportService {
 
   // Get low stock alert report
   async getLowStockReport() {
-    const lowStockProducts = await Product.find({
-      isActive: true,
+    const lowStockProducts = await reportRepository.findActiveProducts({
       $expr: { $lte: ['$currentStock', '$minStockLevel'] }
     }).sort({ currentStock: 1 });
 
-    const outOfStockProducts = await Product.find({
-      isActive: true,
+    const outOfStockProducts = await reportRepository.findActiveProducts({
       currentStock: 0
     }).sort({ name: 1 });
 
-    const criticalStockProducts = await Product.find({
-      isActive: true,
+    const criticalStockProducts = await reportRepository.findActiveProducts({
       $expr: { $lt: ['$currentStock', { $multiply: ['$minStockLevel', 0.5] }] }
     }).sort({ currentStock: 1 });
 
@@ -161,7 +156,7 @@ class ReportService {
     endOfDay.setHours(23, 59, 59, 999);
 
     // Sales summary
-    const salesSummary = await Sale.aggregate([
+    const salesSummary = await reportRepository.aggregateSales([
       {
         $match: {
           saleDate: { $gte: startOfDay, $lte: endOfDay }
@@ -179,7 +174,7 @@ class ReportService {
     ]);
 
     // Top selling products
-    const topProducts = await Sale.aggregate([
+    const topProducts = await reportRepository.aggregateSales([
       {
         $match: {
           saleDate: { $gte: startOfDay, $lte: endOfDay }
@@ -199,7 +194,7 @@ class ReportService {
     ]);
 
     // Payment method breakdown
-    const paymentBreakdown = await Sale.aggregate([
+    const paymentBreakdown = await reportRepository.aggregateSales([
       {
         $match: {
           saleDate: { $gte: startOfDay, $lte: endOfDay }
@@ -229,7 +224,7 @@ class ReportService {
 
   // Get inventory valuation report
   async getInventoryValuation() {
-    const inventoryReport = await Product.aggregate([
+    const inventoryReport = await reportRepository.aggregateProducts([
       { $match: { isActive: true } },
       {
         $addFields: {
@@ -266,7 +261,7 @@ class ReportService {
     ]);
 
     // Calculate overall totals
-    const overallTotals = await Product.aggregate([
+    const overallTotals = await reportRepository.aggregateProducts([
       { $match: { isActive: true } },
       {
         $group: {
@@ -305,7 +300,7 @@ class ReportService {
     const end = new Date(endDate);
     
     // Get sales with product cost information
-    const profitAnalysis = await Sale.aggregate([
+    const profitAnalysis = await reportRepository.aggregateSales([
       {
         $match: {
           saleDate: { $gte: start, $lte: end }
