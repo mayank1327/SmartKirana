@@ -1,10 +1,14 @@
-const Sale = require('../models/Sale');
-const Product = require('../models/Product');
+
 const inventoryService = require('./inventoryService');
+const salesRepository = require('../repositories/salesRepository');
+const mongoose = require('mongoose');
 
 class SalesService {
   // Create new sale with automatic stock deduction
   async createSale(saleData, userId) {
+    const session = await mongoose.startSession();
+    return await session.withTransaction(async () => {
+
     const { items, customerInfo, paymentMethod, tax = 0, discount = 0, creditAmount = 0, notes = '' } = saleData;
     
     if (!items || items.length === 0) {
@@ -13,7 +17,7 @@ class SalesService {
 
     // Validate stock availability for all items first
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+      const product = await salesRepository.findProductById(item.productId, session);
       if (!product || !product.isActive) {
         throw new Error(`Product not found: ${item.productId}`);
       }
@@ -28,7 +32,7 @@ class SalesService {
     let subtotal = 0;
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+      const product = await salesRepository.findProductById(item.productId, session);
       const itemSubtotal = item.quantity * product.sellingPrice;
       
       saleItems.push({
@@ -47,7 +51,7 @@ class SalesService {
     const totalAmount = subtotal + taxAmount - discount;
 
     // Create sale record
-    const sale = await Sale.create({
+    const sale = await salesRepository.createSale({
       items: saleItems,
       subtotal,
       tax: taxAmount,
@@ -59,7 +63,7 @@ class SalesService {
       creditAmount,
       notes,
       soldBy: userId
-    });
+    }, session);
 
     // Reduce stock for each item using inventory service
     for (const item of items) {
@@ -69,17 +73,20 @@ class SalesService {
         'sale',
         userId,
         sale.saleNumber,
-        `Sale to ${customerInfo?.name || 'Customer'}`
+        `Sale to ${customerInfo?.name || 'Customer'}`,
+        session
       );
     }
 
     // Populate the sale with product details
-    const populatedSale = await Sale.findById(sale._id)
-      .populate('items.product', 'name category')
-      .populate('soldBy', 'name email');
+    const populatedSale = await salesRepository.findSaleById(sale._id, [
+      {path : 'items.product', select : 'name category'},
+      {path : 'soldBy', select : 'name email'}
+    ], session);
 
     return populatedSale;
-  }
+  }).finally(() => session.endSession());
+}
 
   // Get all sales with filtering
   async getSales(query = {}) {
@@ -109,13 +116,14 @@ class SalesService {
     
     const skip = (page - 1) * limit;
     
-    const sales = await Sale.find(filter)
-      .populate('soldBy', 'name')
-      .sort({ saleDate: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    const sales = await salesRepository.findSales(filter,{
+    skip,
+    limit: parseInt(limit),
+    sort: { saleDate: -1 },
+    populate: [{ path: 'soldBy', select: 'name' }]
+  });
     
-    const total = await Sale.countDocuments(filter);
+    const total = await salesRepository.countDocuments(filter);
     
     return {
       sales,
@@ -129,10 +137,11 @@ class SalesService {
 
   // Get single sale by ID
   async getSaleById(saleId) {
-    const sale = await Sale.findById(saleId)
-      .populate('items.product', 'name category costPrice')
-      .populate('soldBy', 'name email');
-    
+    const sale = await salesRepository.findSaleById(saleId, [
+      {path : 'items.product', select : 'name category costPrice'},
+      {path : 'soldBy', select : 'name email'}
+    ]);
+
     if (!sale) {
       throw new Error('Sale not found');
     }
@@ -148,7 +157,7 @@ class SalesService {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
     
-    const dailySales = await Sale.aggregate([
+    const dailySales = await salesRepository.aggregate([
       {
         $match: {
           saleDate: {
@@ -205,7 +214,7 @@ class SalesService {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    const analytics = await Sale.aggregate([
+    const analytics = await salesRepository.aggregate([
       {
         $match: {
           saleDate: { $gte: startDate }
