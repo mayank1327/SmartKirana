@@ -3,8 +3,9 @@ const inventoryRepository = require('../repositories/inventoryRepository');
 
 class InventoryService {
   // Update stock with movement tracking
-  async updateStock(productId, quantity, movementType, reason, userId, reference = '', notes = '') {
-    const session = await mongoose.startSession();
+  async updateStock(productId, quantity, movementType, reason, userId, reference = '', notes = '', session = null) {
+    const ownSession = !session;
+    session = session ? session : await mongoose.startSession();
     try {
     return await session.withTransaction(async () => {
     const product = await inventoryRepository.findProductById(productId, session);
@@ -54,13 +55,14 @@ class InventoryService {
   
   });
 } finally {
+  if (ownSession)
    session.endSession();
 }
 }
 
   // Add stock (purchase/return)
-  async addStock(productId, quantity, reason, userId, reference = '', notes = '') {
-    return this.updateStock(productId, quantity, 'IN', reason, userId, reference, notes);
+  async addStock(productId, quantity, reason, userId, reference = '', notes = '', session = null) {
+    return this.updateStock(productId, quantity, 'IN', reason, userId, reference, notes, session);
   }
 
   // Reduce stock (sale/damage)
