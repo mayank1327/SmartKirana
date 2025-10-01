@@ -12,7 +12,8 @@ const { protect } = require('../middleware/auth');
 const router = express.Router();
 
 const validate = require('../middleware/validate'); // Import validation middleware
-const  productSchema  = require('../validators/productValidator'); // Import product validation schema
+const {createProductSchema, updateProductSchema}  = require('../validators/productValidator'); // Import product validation schema
+
 // Protect all routes
 router.use(protect);
 
@@ -22,11 +23,11 @@ router.get('/low-stock', getLowStockProducts);
 // CRUD routes
 router.route('/')
   .get(getAllProducts)
-  .post(validate(productSchema),createProduct);
+  .post(validate(createProductSchema),createProduct);
 
 router.route('/:id')
   .get(getProduct)
-  .put(validate(productSchema), updateProduct)
+  .put(validate(updateProductSchema), updateProduct)
   .delete(deleteProduct);
 
 module.exports = router;
