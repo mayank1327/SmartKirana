@@ -1,10 +1,12 @@
-const Purchase = require('../models/Purchase');
-const Product = require('../models/Product');
+const mongoose = require('mongoose');
 const inventoryService = require('./inventoryService');
 
 class PurchaseService {
   // Create new purchase with automatic stock addition
   async createPurchase(purchaseData, userId) {
+
+  const session = await mongoose.startSession();
+    return await session.withTransaction(async () => {
     const { 
       supplier, 
       items, 
@@ -28,7 +30,9 @@ class PurchaseService {
     let subtotal = 0;
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+
+      const product = await purchaseRepository.findProductById(item.productId);
+
       if (!product || !product.isActive) {
         throw new Error(`Product not found: ${item.productId}`);
       }
@@ -55,7 +59,7 @@ class PurchaseService {
     const totalAmount = subtotal + taxAmount - discount;
 
     // Create purchase record
-    const purchase = await Purchase.create({
+    const purchase = await purchaseRepository.createPurchase({
       supplier,
       items: purchaseItems,
       subtotal,
@@ -66,7 +70,7 @@ class PurchaseService {
       invoiceNumber,
       notes,
       purchasedBy: userId
-    });
+    }, session);
 
     // Add stock for each item using inventory service
     for (const item of items) {
@@ -76,23 +80,26 @@ class PurchaseService {
         'purchase',
         userId,
         purchase.purchaseNumber,
-        `Purchase from ${supplier.name}`
+        `Purchase from ${supplier.name}`,
+        session
       );
 
       // Update product cost price with latest purchase price
-      await Product.findByIdAndUpdate(item.productId, {
+      await purchaseRepository.updateProductById(item.productId, {
         costPrice: item.unitCost
-      });
+      }, session);
     }
 
     // Populate the purchase with product details
-    const populatedPurchase = await Purchase.findById(purchase._id)
-      .populate('items.product', 'name category')
-      .populate('purchasedBy', 'name email');
-
+    const populatedPurchase = await purchaseRepository.findPurchaseById(purchase._id , [
+      { path: 'items.product', select: 'name category' },
+      { path: 'purchasedBy', select: 'name email' }
+    ], session);
+     
     return populatedPurchase;
-  }
-
+  });
+}
+  
   // Get all purchases with filtering
   async getPurchases(query = {}) {
     const { 
@@ -121,13 +128,14 @@ class PurchaseService {
     
     const skip = (page - 1) * limit;
     
-    const purchases = await Purchase.find(filter)
-      .populate('purchasedBy', 'name')
-      .sort({ purchaseDate: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    const purchases = await purchaseRepository.findPurchases(filter, {
+      skip,
+      limit: parseInt(limit),
+      sort: { purchaseDate: -1 },
+      populate: [{ path: 'purchasedBy', select: 'name' }]
+    })
     
-    const total = await Purchase.countDocuments(filter);
+    const total = await purchaseRepository.countDocuments(filter);
     
     return {
       purchases,
@@ -136,14 +144,16 @@ class PurchaseService {
         pages: Math.ceil(total / limit),
         total
       }
-    };
+    }
   }
 
   // Get single purchase by ID
   async getPurchaseById(purchaseId) {
-    const purchase = await Purchase.findById(purchaseId)
-      .populate('items.product', 'name category sellingPrice')
-      .populate('purchasedBy', 'name email');
+    const purchase = await purchaseRepository.findPurchaseById(purchaseId, [
+      { path: 'items.product', select: 'name category sellingPrice' },
+      { path: 'purchasedBy', select: 'name email' }
+    ])
+      
     
     if (!purchase) {
       throw new Error('Purchase not found');
@@ -152,11 +162,11 @@ class PurchaseService {
     return purchase;
   }
 
-  // Update payment status
+  // Update payment status // here we also adding transaction session 
   async updatePaymentStatus(purchaseId, paymentData) {
     const { paidAmount, paymentStatus, notes } = paymentData;
     
-    const purchase = await Purchase.findById(purchaseId);
+    const purchase = await PurchaseRepository.findPurchaseById(purchaseId);
     if (!purchase) {
       throw new Error('Purchase not found');
     }
@@ -175,17 +185,18 @@ class PurchaseService {
     
     if (notes) purchase.notes = notes;
     
-    await purchase.save();
+    await purchaseRepository.save(purchase);
     return purchase;
   }
 
   // Get pending payments summary
   async getPendingPayments() {
-    const pendingPurchases = await Purchase.find({
-      paymentStatus: { $in: ['pending', 'partial'] }
-    })
-    .select('purchaseNumber supplier totalAmount paidAmount paymentDueDate purchaseDate')
-    .sort({ paymentDueDate: 1, purchaseDate: -1 });
+    const pendingPurchases = await PurchaseRepository.findPurchase(
+      { paymentStatus: { $in: ['pending', 'partial'] } },
+      'purchaseNumber supplier totalAmount paidAmount paymentDueDate purchaseDate',
+      { paymentDueDate: 1, purchaseDate: -1 }
+    )
+    
 
     const summary = {
       totalPendingAmount: 0,
@@ -216,7 +227,7 @@ class PurchaseService {
 
   // Get supplier summary
   async getSupplierSummary() {
-    const supplierStats = await Purchase.aggregate([
+    const supplierStats = await PurchaseRepository.aggregate([
       {
         $group: {
           _id: '$supplier.name',
@@ -248,7 +259,7 @@ class PurchaseService {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    const analytics = await Purchase.aggregate([
+    const analytics = await PurchaseRepository.aggregate([
       {
         $match: {
           purchaseDate: { $gte: startDate }

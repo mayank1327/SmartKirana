@@ -1,17 +1,20 @@
-// src/services/authService.js
-const User = require('../models/User');
-const  generateToken = require('../utils/jwt');
-
+const  generateToken = require('../utils/jwt'); // JWT utility for token generation
+const userRepository = require('../repositories/userRepository'); // Import the user repository
+// Service orchestrates both to complete business operation -> depends on buth utils and repo 
 class AuthService {
   // Register a new user
   async registerUser({ name, email, password, role }) {
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw new Error('User already exists');
+
+    // BUSINESS RULE: No duplicate emails
+    const existingUser = await userRepository.findByEmail(email); // Check if user already exists
+
+    if (existingUser) { // REFINEMENT PHASE --> // Better to use custom error classes in real apps
+      throw new Error('User already exists'); 
     }
 
-    const user = await User.create({ name, email, password, role });
-    const token = generateToken(user._id);
+    const user = await userRepository.create({ name, email, password, role }); // Create new user
+
+    const token = generateToken(user._id); // Generate JWT token
 
     return {
       token,
@@ -26,16 +29,18 @@ class AuthService {
 
   // Login existing user
   async loginUser({ email, password }) {
-    const user = await User.findOne({ email }).select('+password'); // What this .select(..) do ? 
-    if (!user || !(await user.comparePassword(password))) {
-      throw new Error('Invalid credentials');
+
+    const user = await userRepository.findByEmail(email, true); // Include password for comparison
+
+    if (!user || !(await user.comparePassword(password))) { // Validate password
+      throw new Error('Invalid credentials'); // Better to use custom error classes in real apps
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user._id); // Generate JWT token
 
     return {
       token,
-      data: {
+      data: { // ALTERNATIVE -> DTOs (Data Transfer Objects) for shaping response
         id: user._id,
         name: user.name,
         email: user.email,
@@ -46,3 +51,14 @@ class AuthService {
 }
 
 module.exports = new AuthService();
+
+
+// Future needs: Will you need:
+// Password reset?
+// Email verification?
+// OAuth/social login?
+// Update profile
+// Account deletion?
+// Refresh tokens?
+// Two-factor authentication?
+// ETC.

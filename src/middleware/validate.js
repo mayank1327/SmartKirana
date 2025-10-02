@@ -4,12 +4,16 @@ const validate = (schema) => (req, res, next) => {
   
     if (error) {
       // Return all errors in one response
-      const messages = error.details.map(detail => detail.message);
+      const messages = error.details.reduce((acc, detail) => { // refinement
+        acc[detail.path[0]] = detail.message; 
+        return acc;
+      }, {});
       return res.status(400).json({ success: false, errors: messages });
     }
   
     // Replace req.body with validated value
-    req.body = value;
+    req.body = value; // Controller receives CLEANED data automatically!
+
     next();
   };
   

@@ -15,7 +15,7 @@ const stockMovementSchema = new mongoose.Schema({
   quantity: {
     type: Number,
     required: [true, 'Quantity is required'],
-    min: [0, 'Quantity must be positive']
+    min: [1, 'Quantity must be positive'] // Quantity should always be positive; direction is indicated by movementType
   },
   previousStock: {
     type: Number,
@@ -33,7 +33,7 @@ const stockMovementSchema = new mongoose.Schema({
     enum: ['purchase', 'sale', 'damage', 'expired', 'theft', 'correction', 'return'],
     lowercase: true
   },
-  reference: {
+  reference: { //Refinement: Consider ObjectId if you always reference internal documents.
     type: String,
     trim: true,
     maxlength: [100, 'Reference cannot exceed 100 characters']
@@ -54,9 +54,12 @@ const stockMovementSchema = new mongoose.Schema({
 
 // Indexes for better query performance
 stockMovementSchema.index({ product: 1, createdAt: -1 });
-stockMovementSchema.index({ movementType: 1 });
+stockMovementSchema.index({ movementType: 1 });  // Less common than product-based queries - consider removing if not used.
 stockMovementSchema.index({ reason: 1 });
 stockMovementSchema.index({ performedBy: 1 });
+
+// Add this for common queries
+stockMovementSchema.index({ product: 1, movementType: 1, createdAt: -1 });
 
 // Virtual for movement direction
 stockMovementSchema.virtual('movementDirection').get(function() {
@@ -64,3 +67,42 @@ stockMovementSchema.virtual('movementDirection').get(function() {
 });
 
 module.exports = mongoose.model('StockMovement', stockMovementSchema);
+
+// Refinement task: Analyze actual queries, remove redundant indexes.
+// // // These two indexes overlap:
+// { product: 1, createdAt: -1 }           // Index 1
+// { product: 1, movementType: 1, createdAt: -1 } // Index 2 (superset)
+
+// // Index 2 can handle Index 1's queries!
+// // Consider removing Index 1 (save memory)
+
+// Should movements be IMMUTABLE?
+//  Consideration: Prevent updates after creation
+// stockMovementSchema.pre('findOneAndUpdate', function(next) {
+//   next(new Error('Stock movements cannot be modified after creation'));
+// });
+
+// // Only allow creation (POST) and reading (GET), no PUT/PATCH/DELETE
+// Audit trails should be append-only! Note for refinement.
+
+
+// Missing Fields (Consider Adding):
+// javascript// 1. Stock value (for accounting)
+// value: {
+//   costPrice: Number,  // Product cost at time of movement
+//   totalValue: Number  // quantity * costPrice
+// }
+
+// // 2. Location (for multi-warehouse)
+// location: {
+//   type: String,
+//   default: 'main'
+// }
+
+// // 3. Batch/Lot tracking (for expiry management)
+// batch: {
+//   type: String,
+//   expiryDate: Date
+// }
+// Don't add yet - only when needed (YAGNI).
+

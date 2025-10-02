@@ -3,7 +3,7 @@ const productService = require('../services/productService');
 // Get all products
 const getAllProducts = async (req, res, next) => {
   try {
-    const result = await productService.getAllProducts(req.query);
+    const result = await productService.getAllProducts(req.query); 
     
     res.status(200).json({
       success: true,
@@ -88,6 +88,7 @@ const getLowStockProducts = async (req, res, next) => {
     next(error);
   }
 };
+
 
 module.exports = {
   getAllProducts,

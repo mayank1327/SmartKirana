@@ -1,10 +1,14 @@
-const Product = require('../models/Product');
-const StockMovement = require('../models/StockMovement');
+const mongoose = require('mongoose'); // For transactions if needed
+const inventoryRepository = require('../repositories/inventoryRepository');
 
 class InventoryService {
   // Update stock with movement tracking
-  async updateStock(productId, quantity, movementType, reason, userId, reference = '', notes = '') {
-    const product = await Product.findById(productId);
+  async updateStock(productId, quantity, movementType, reason, userId, reference = '', notes = '', session = null) {
+    const ownSession = !session;
+    session = session ? session : await mongoose.startSession();
+    try {
+    return await session.withTransaction(async () => {
+    const product = await inventoryRepository.findProductById(productId, session);
     if (!product || !product.isActive) {
       throw new Error('Product not found');
     }
@@ -23,15 +27,19 @@ class InventoryService {
         throw new Error(`Insufficient stock. Available: ${previousStock}, Required: ${quantity}`);
       }
     } else if (movementType === 'ADJUSTMENT') {
-      newStock = quantity; // Direct stock adjustment
+      if (quantity < 0) { // Stock can be 0 (out of stock) but not negative!
+        throw new Error('Adjustment quantity cannot be negative');
+      }
+         newStock = quantity; // Direct stock adjustment
     }
 
     // Update product stock
     product.currentStock = newStock;
-    await product.save();
+    product.isLowStock = newStock <= product.minStockLevel; // Update low stock flag
+    await inventoryRepository.save(product, session);
 
     // Create stock movement record
-    const stockMovement = await StockMovement.create({
+    const stockMovement = await inventoryRepository.createStockMovement({
       product: productId,
       movementType,
       quantity: movementType === 'ADJUSTMENT' ? Math.abs(newStock - previousStock) : quantity,
@@ -41,22 +49,28 @@ class InventoryService {
       reference,
       notes,
       performedBy: userId
-    });
+    }, session);
 
     return {
       product,
       stockMovement
     };
-  }
+  
+  });
+} finally {
+  if (ownSession)
+   session.endSession();
+}
+}
 
   // Add stock (purchase/return)
-  async addStock(productId, quantity, reason, userId, reference = '', notes = '') {
-    return this.updateStock(productId, quantity, 'IN', reason, userId, reference, notes);
+  async addStock(productId, quantity, reason, userId, reference = '', notes = '', session = null) {
+    return this.updateStock(productId, quantity, 'IN', reason, userId, reference, notes, session);
   }
 
   // Reduce stock (sale/damage)
-  async reduceStock(productId, quantity, reason, userId, reference = '', notes = '') {
-    return this.updateStock(productId, quantity, 'OUT', reason, userId, reference, notes);
+  async reduceStock(productId, quantity, reason, userId, reference = '', notes = '', session = null) {
+    return this.updateStock(productId, quantity, 'OUT', reason, userId, reference, notes, session);
   }
 
   // Adjust stock (correction)
@@ -68,13 +82,12 @@ class InventoryService {
   async getStockHistory(productId, limit = 20, page = 1) {
     const skip = (page - 1) * limit;
     
-    const movements = await StockMovement.find({ product: productId })
-      .populate('performedBy', 'name email')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    const movements = await inventoryRepository.findStockMovements(
+      { product: productId }, 
+      { skip, limit: parseInt(limit), sort: { createdAt: -1 } }
+    )
 
-    const total = await StockMovement.countDocuments({ product: productId });
+    const total = await inventoryRepository.countStockMovements({ product: productId });
 
     return {
       movements,
@@ -88,44 +101,46 @@ class InventoryService {
 
   // Get stock summary for all products
   async getStockSummary() {
-    const products = await Product.find({ isActive: true })
-      .select('name currentStock minStockLevel category')
-      .sort({ name: 1 });
-
-    const summary = {
-      totalProducts: products.length,
-      lowStockCount: products.filter(p => p.currentStock <= p.minStockLevel).length,
-      outOfStockCount: products.filter(p => p.currentStock === 0).length,
-      totalStockValue: 0,
-      categoryBreakdown: {}
-    };
-
-    // Calculate stock value and category breakdown
-    for (const product of products) {
-      const stockValue = product.currentStock * product.costPrice || 0;
-      summary.totalStockValue += stockValue;
-
-      if (!summary.categoryBreakdown[product.category]) {
-        summary.categoryBreakdown[product.category] = {
-          count: 0,
-          stockValue: 0
-        };
-      }
-      summary.categoryBreakdown[product.category].count += 1;
-      summary.categoryBreakdown[product.category].stockValue += stockValue;
-    }
-
-    return summary;
+    const summary = await inventoryRepository.aggregate([
+      { $match: { isActive: true } },
+      { $group: {
+        _id: null,
+        totalProducts: { $sum: 1 },
+        lowStockCount: { 
+          $sum: { $cond: [{ $lte: ['$currentStock', '$minStockLevel'] }, 1, 0] }
+        },
+        outOfStockCount: { 
+          $sum: { $cond: [{ $eq: ['$currentStock', 0] }, 1, 0] }
+        },
+        totalStockValue: { 
+          $sum: { $multiply: ['$currentStock', '$costPrice'] }
+        }
+      }}
+    ]);
+    
+    const categoryBreakdown = await inventoryRepository.aggregate([
+      { $match: { isActive: true } },
+      { $group: {
+        _id: '$category',
+        count: { $sum: 1 },
+        stockValue: { $sum: { $multiply: ['$currentStock', '$costPrice'] } }
+      }}
+    ]);
+    
+    return { ...summary[0], categoryBreakdown };
   }
 
   // Get recent stock movements (all products)
   async getRecentMovements(limit = 50) {
-    const movements = await StockMovement.find()
-      .populate('product', 'name category')
-      .populate('performedBy', 'name')
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
-
+  const movements = await inventoryRepository.findStockMovements(
+      {}, // No filter (all products)
+    { 
+      limit: parseInt(limit), 
+      sort: { createdAt: -1 },
+      populate: ['product', 'performedBy'] // If you add this option
+    }
+   );
+      
     return movements;
   }
 }
