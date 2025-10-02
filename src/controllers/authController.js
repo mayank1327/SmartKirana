@@ -1,6 +1,5 @@
 const authService = require('../services/authService');
 // Thin layer 
-
 const register = async (req, res, next) => {
   try {
     // 1. Extract data from HTTP request
@@ -39,7 +38,6 @@ module.exports = {
 };
 
 // Missing (handled by error middleware):
-
 // 400 Bad Request - Validation errors, duplicate user
 // 401 Unauthorized - Invalid credentials
 // 500 Internal Server Error - Unexpected errors

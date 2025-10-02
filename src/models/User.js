@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Name is required'],
-    trim: true
+    trim: true // Removes leading/trailing whitespace
   },
   email: {
     type: String,
@@ -13,7 +13,6 @@ const userSchema = new mongoose.Schema({
     unique: true, // DB constraint ->  MongoDB enforces at DB level (prevents duplicates)
     index: true,  // Performance optimization -> Faster queries on email (for login lookups)
     lowercase: true,
-    // match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter valid email'] // it's fails some valid email
     match: [/.+@.+\..+/, 'Please enter a valid email'] // Most of the devs prefer this and joi validation for complex
   },
   password: {
@@ -28,7 +27,7 @@ const userSchema = new mongoose.Schema({
     required : [true, 'Role is required']
   }
 }, {
-  timestamps: true
+  timestamps: true // Automatically manage createdAt and updatedAt fields
 });
 
 // Hash password before saving
