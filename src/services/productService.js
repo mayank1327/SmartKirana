@@ -16,7 +16,7 @@ class ProductService {
     
     // Filter low stock items
     if (lowStock === 'true') {
-      filter.isLowStock = true; // return events driven notifications in future
+      filter.isLowStock = true; // TODO :return events driven notifications in future
     }
     // Pagination & sorting 
     const { products, total } = await productRepository.findAll(filter, { page, limit, sort: { createdAt: -1 } });
@@ -139,7 +139,7 @@ class ProductService {
 
   // Helper to calculate profit margin percentage
   calculateProfitPercentage(product) {
-    if (product.costPrice === 0) return 0;
+    if (product.costPrice === 0) return 0; // ✅ Prevents division by zero!
     return ((product.sellingPrice - product.costPrice) / product.costPrice) * 100;
   }
 
@@ -161,3 +161,10 @@ module.exports = new ProductService();
 // 1. Move all DB calls to ProductRepository to separate persistence from business logic. // done
 // 2. Consider MongoDB aggregation pipelines for profit/stock computations for large datasets.
 // 3. Add event-driven notifications for low stock items instead of just returning a flag.
+// Future enhancement:
+// javascript// Add relevance score
+// Product.find(
+//   { $text: { $search: search } },
+//   { score: { $meta: 'textScore' } }
+// ).sort({ score: { $meta: 'textScore' } });
+// // Returns most relevant first

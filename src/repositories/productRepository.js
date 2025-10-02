@@ -2,7 +2,7 @@ const Product = require('../models/Product');
 
 class ProductRepository {
 
-// Find multiple products with filters, pagination, sorting
+// Find multiple products with filters, pagination, sorting // TODO :> aggregation in future
 async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 } } = {}) { 
 
   const skip = (page - 1) * limit;
@@ -13,7 +13,7 @@ async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 } } =
     .limit(parseInt(limit));
   
 
-    const total = await Product.countDocuments(filters);
+  const total = await Product.countDocuments(filters); // Extra DB Query
   return { products, total };
 }
 
@@ -37,7 +37,7 @@ async findById(filter) {
     return Product.findByIdAndUpdate(id, { isActive: false }, { new: true });
   }
 
-  async save(product) {
+  async save(product) {  // That's right ->Instance method to save changes to a product // Instance vs Static methods
     return product.save();
   }
 

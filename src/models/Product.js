@@ -41,8 +41,8 @@ const productSchema = new mongoose.Schema({
   minStockLevel: {
     type: Number,
     required: [true, 'Minimum stock level is required'],
-    min: [0, 'Minimum stock level must be positive'],
-    default: 10
+    min: [0, 'Minimum stock level must be positive'], // Future enhancement: Let owner set per-product thresholds (already possible!).
+    default: 10  
   },
   unit: { // read above categories TODO
     type: String,
@@ -64,22 +64,44 @@ const productSchema = new mongoose.Schema({
 });
 
 // Indexes for better search performance
-productSchema.index({ name: 'text', category: 'text' }); // Text index for search functionality
+productSchema.index({ name: 'text', category: 'text' }); // Text index for search functionality //For better search, consider Elasticsearch/Algolia later.
+
 productSchema.index({category: 1}); // Index for category filtering
+
 productSchema.index({ currentStock: 1 }, { partialFilterExpression: { isActive: true, isLowStock: true } }); // Index for low stock queries and active products
+
 // At the end of your schema, after other indexes
 productSchema.index({ category: 1, isActive: 1 }); 
+
 // Ensure unique active product names (soft delete aware)
 productSchema.index(
   { name: 1 },
   { unique: true, partialFilterExpression: { isActive: true } }
 );
 
+module.exports = mongoose.model('Product', productSchema);
+
 // TODO: Future refinement:
 // 1. Consider partial indexes for low stock queries to improve performance.
 //    e.g., { currentStock: 1 }, { partialFilterExpression: { isActive: true } }
 // 2. Consider compound indexes if queries combine multiple fields frequently.
-// 3. Currently using text index on name+category for MVP; later might split or optimize.
+// 3. Currently using text index on name+category for MVP; later might split or optimize. 
+// Common query patterns dictate indexes:
+
+// SEE THOSE BELOW ALSO=> 
+// // Pattern 1: Active products by category (frequent)
+// { category: 1, isActive: 1 } // ✅ You have this
+
+// // Pattern 2: Low stock active products (dashboard)
+// { isActive: 1, isLowStock: 1 } // Consider adding
+
+// // Pattern 3: Product name lookup (autocomplete)
+// { name: 1 } // Consider adding (separate from text index)
 
 
-module.exports = mongoose.model('Product', productSchema);
+// Need separate collection when:
+// 1. Categories change frequently (admin adds new ones)
+// 2. Need metadata (category description, icon, display order)
+// 3. Need hierarchical categories (parent-child)
+
+// Category collection example:
