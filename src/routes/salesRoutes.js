@@ -8,6 +8,8 @@ const {
   getTodaysSales
 } = require('../controllers/salesController');
 const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const salesValidator = require('../validators/salesValidator');
 
 const router = express.Router();
 
@@ -21,8 +23,8 @@ router.get('/analytics', getSalesAnalytics);
 
 // CRUD routes
 router.route('/')
-  .get(getSales)
-  .post(createSale);
+  .get(validate(salesValidator.getSalesQuerySchema, 'query'),getSales)
+  .post(validate(salesValidator.createSaleSchema),createSale);
 
 router.route('/:id')
   .get(getSale);

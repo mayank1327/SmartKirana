@@ -6,21 +6,6 @@ const createSale = async (req, res, next) => {
     const saleData = req.body;
     const userId = req.user._id;
 
-    // Validate required fields
-    if (!saleData.items || saleData.items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Sale must contain at least one item'
-      });
-    }
-
-    if (!saleData.paymentMethod) {
-      return res.status(400).json({
-        success: false,
-        error: 'Payment method is required'
-      });
-    }
-
     const sale = await salesService.createSale(saleData, userId);
 
     res.status(201).json({
