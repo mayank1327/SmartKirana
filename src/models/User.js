@@ -1,17 +1,17 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // For password hashing
 
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Name is required'],
-    trim: true // Removes leading/trailing whitespace
+    trim: true 
   },
   email: {
     type: String,
-    required: [true, 'Email is required'], // Validation ->  Mongoose validates before saving
-    unique: true, // DB constraint ->  MongoDB enforces at DB level (prevents duplicates)
-    index: true,  // Performance optimization -> Faster queries on email (for login lookups)
+    required: [true, 'Email is required'], // Mongoose validates before saving
+    unique: true, //  MongoDB enforces at DB level (prevents duplicates)
+    index: true,  // Faster queries on email (for login lookups)
     lowercase: true,
     match: [/.+@.+\..+/, 'Please enter a valid email'] // Most of the devs prefer this and joi validation for complex
   },
@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false // CRITICAL: Excludes from queries by default
   },
-  role: {
+  role: { // TODO : Will you need permissions per role later?
     type: String,
     enum: ['owner', 'staff', 'manager'],
     required : [true, 'Role is required']
@@ -37,7 +37,7 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Compare password method  // Password comparison is core domain logic (always needed)
+// Password comparison is core domain logic (always needed)
 userSchema.methods.comparePassword = async function(candidatePassword) { 
   return await bcrypt.compare(candidatePassword, this.password);
 };

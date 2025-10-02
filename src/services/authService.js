@@ -1,14 +1,14 @@
-const  generateToken = require('../utils/jwt'); // JWT utility for token generation
+const  generateToken = require('../utils/jwt');
 const userRepository = require('../repositories/userRepository'); // Import the user repository
 // Service orchestrates both to complete business operation -> depends on buth utils and repo 
 class AuthService {
   // Register a new user
   async registerUser({ name, email, password, role }) {
 
-    // BUSINESS RULE: No duplicate emails
+    // No duplicate emails
     const existingUser = await userRepository.findByEmail(email); // Check if user already exists
 
-    if (existingUser) { // REFINEMENT PHASE --> // Better to use custom error classes in real apps
+    if (existingUser) { //TODO: Better to use custom error classes in real apps
       throw new Error('User already exists'); 
     }
 
@@ -32,8 +32,8 @@ class AuthService {
 
     const user = await userRepository.findByEmail(email, true); // Include password for comparison
 
-    if (!user || !(await user.comparePassword(password))) { // Validate password
-      throw new Error('Invalid credentials'); // Better to use custom error classes in real apps
+    if (!user || !(await user.comparePassword(password))) { 
+      throw new Error('Invalid credentials'); // TODO : Better to use custom error classes in real apps
     }
 
     const token = generateToken(user._id); // Generate JWT token
@@ -53,7 +53,7 @@ class AuthService {
 module.exports = new AuthService();
 
 
-// Future needs: Will you need:
+// Future: Will you need:
 // Password reset?
 // Email verification?
 // OAuth/social login?
@@ -61,4 +61,5 @@ module.exports = new AuthService();
 // Account deletion?
 // Refresh tokens?
 // Two-factor authentication?
-// ETC.
+// Role-based access control?
+// etc...

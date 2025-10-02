@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-// Better approach (for refinement): // FOLLOW DRY PRINCIPLE
+// Better approach : // FOLLOW DRY PRINCIPLE
 const commonValidations = {
   email: Joi.string().email().required().messages({
     'string.email': 'Invalid email address',
