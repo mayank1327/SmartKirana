@@ -10,7 +10,7 @@ const {
 } = require('../controllers/inventoryController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
-const inventoryValidation = require('../validations/inventoryValidation');
+const inventoryValidation = require('../validators/inventoryValidator');
 
 const router = express.Router();
 

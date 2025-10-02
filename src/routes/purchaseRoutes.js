@@ -10,6 +10,8 @@ const {
   getTodaysPurchases
 } = require('../controllers/purchaseController');
 const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const purchaseValidator = require('../validators/purchaseValidator');
 
 const router = express.Router();
 
@@ -24,13 +26,13 @@ router.get('/analytics', getPurchaseAnalytics);
 
 // CRUD routes
 router.route('/')
-  .get(getPurchases)
-  .post(createPurchase);
+  .get(validate(purchaseValidator.getPurchasesQuerySchema, 'query'),getPurchases)
+  .post(validate(purchaseValidator.createPurchaseSchema), createPurchase);
 
 router.route('/:id')
   .get(getPurchase);
 
 // Payment management
-router.put('/:id/payment', updatePaymentStatus);
+router.put('/:id/payment', validate(purchaseValidator.updatePaymentSchema),updatePaymentStatus);
 
 module.exports = router;
