@@ -37,7 +37,7 @@ module.exports = {
   login
 };
 
-// Missing (handled by error middleware):
+// Missing (handled by error middleware
 // 400 Bad Request - Validation errors, duplicate user
 // 401 Unauthorized - Invalid credentials
 // 500 Internal Server Error - Unexpected errors
