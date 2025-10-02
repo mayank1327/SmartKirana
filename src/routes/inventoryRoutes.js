@@ -9,17 +9,19 @@ const {
   getRecentMovements
 } = require('../controllers/inventoryController');
 const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const inventoryValidation = require('../validations/inventoryValidation');
 
 const router = express.Router();
 
 // Protect all routes
-router.use(protect);
+router.use(protect);  // TODO : Role-based access control can be added here
 
 // Stock operation routes
-router.post('/update-stock', updateStock);
-router.post('/add-stock', addStock);
-router.post('/reduce-stock', reduceStock);
-router.post('/adjust-stock', adjustStock);
+router.post('/update-stock', validate(inventoryValidation.updateStock),updateStock);
+router.post('/add-stock', validate(inventoryValidation.addStock),addStock);
+router.post('/reduce-stock', validate(inventoryValidation.reduceStock),reduceStock);
+router.post('/adjust-stock', validate(inventoryValidation.adjustStock),adjustStock);
 
 // History and summary routes
 router.get('/summary', getStockSummary);
