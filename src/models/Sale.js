@@ -107,7 +107,7 @@ saleSchema.index({ soldBy: 1 });
 saleSchema.index({ saleNumber: 1 });
 
 // Auto-generate sale number
-saleSchema.pre('save', async function(next) {
+saleSchema.pre('save', async function(next) {  // TODO : ATOMIC COUNTER 
     if (this.isNew) {
       try {
         const today = new Date();
@@ -134,7 +134,48 @@ saleSchema.pre('save', async function(next) {
     } else {
       next();
     }
-  });
+});
+
+// Pre-save validation
+saleSchema.pre('save', function(next) {
+  // If payment method is credit, status should be pending
+  if (this.paymentMethod === 'credit' && this.paymentStatus === 'paid') {
+    return next(new Error('Credit sales cannot be marked as paid'));
+  }
+  // creditAmount should not exceed totalAmount
+  if (this.creditAmount > this.totalAmount) {
+    return next(new Error('Credit amount cannot exceed total amount'));
+  }
+   // If creditAmount > 0, status cannot be 'paid'
+   if (this.creditAmount > 0 && this.paymentStatus === 'paid') {
+    return next(new Error('Sale with credit amount cannot be fully paid'));
+  }
+  next();
+});
+
+// Should validate item calculations
+saleItemSchema.pre('save', function(next) {
+  const expectedSubtotal = this.quantity * this.unitPrice;
+  if (Math.abs(this.subtotal - expectedSubtotal) > 0.01) {  // Float precision
+    return next(new Error('Item subtotal mismatch'));
+  }
+  next();
+});
+
+// Should validate sale calculations
+saleSchema.pre('save', function(next) {
+  const calculatedSubtotal = this.items.reduce((sum, item) => sum + item.subtotal, 0);
+  if (Math.abs(this.subtotal - calculatedSubtotal) > 0.01) {
+    return next(new Error('Sale subtotal mismatch'));
+  }
+  
+  const expectedTotal = this.subtotal + this.tax - this.discount;
+  if (Math.abs(this.totalAmount - expectedTotal) > 0.01) {
+    return next(new Error('Total amount mismatch'));
+  }
+  
+  next();
+});
 
 // Virtual for profit calculation
 saleSchema.virtual('totalProfit').get(function() {
@@ -144,3 +185,9 @@ saleSchema.virtual('totalProfit').get(function() {
 });
 
 module.exports = mongoose.model('Sale', saleSchema);
+
+// Future (separate Customer collection): When to migrate:
+// Track customer purchase history
+// Credit limits per customer
+// Loyalty programs
+// Customer analytics
