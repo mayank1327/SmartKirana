@@ -10,6 +10,12 @@ const saleItemSchema = Joi.object({
   })
 });
 
+const objectId = Joi.string()
+  .regex(/^[0-9a-fA-F]{24}$/)
+  .message('Invalid ObjectId')
+  .required();
+
+
 // Sale creation schema
 const createSaleSchema = Joi.object({
   items: Joi.array().items(saleItemSchema).min(1).required(),
@@ -19,9 +25,14 @@ const createSaleSchema = Joi.object({
     phone: Joi.string().allow('', null)
   }).optional(),
   paymentMethod: Joi.string().valid('cash', 'card', 'upi', 'credit').required(),
-  tax: Joi.number().min(0).default(0),
-  discount: Joi.number().min(0).default(0),
-  creditAmount: Joi.number().min(0).default(0),
+  tax: Joi.number().min(0).max(100),  // Tax can't exceed 100%
+  discount: Joi.number().min(0).max(Joi.ref('subtotal')),  // Can't exceed subtotal (needs custom validator)
+ // Conditional validation
+  creditAmount: Joi.when('paymentMethod', {
+  is: 'credit',
+  then: Joi.number().min(1).required(),  // Credit sales must have creditAmount
+  otherwise: Joi.number().min(0).default(0)
+  }),
   notes: Joi.string().allow('', null)
 });
 
@@ -36,7 +47,12 @@ const getSalesQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(20)
 });
 
+const getSaleByIdSchema = Joi.object({
+  id: objectId
+});
+
 module.exports = {
   createSaleSchema,
-  getSalesQuerySchema
+  getSalesQuerySchema,
+  getSaleByIdSchema
 };

@@ -9,7 +9,7 @@ const {
 } = require('../controllers/salesController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
-const salesValidator = require('../validators/salesValidator');
+const { createSaleSchema, getSalesQuerySchema, getSaleByIdSchema } = require('../validators/salesValidator');
 
 const router = express.Router();
 
@@ -23,10 +23,20 @@ router.get('/analytics', getSalesAnalytics);
 
 // CRUD routes
 router.route('/')
-  .get(validate(salesValidator.getSalesQuerySchema, 'query'),getSales)
-  .post(validate(salesValidator.createSaleSchema),createSale);
+  .get(validate(getSalesQuerySchema, 'query'),getSales)
+  .post(validate(createSaleSchema),createSale);
 
 router.route('/:id')
-  .get(getSale);
+  .get(validate(getSaleByIdSchema, 'params'), getSale);
 
 module.exports = router;
+
+
+// Optimization Opportunities:
+
+// Batch product fetching in createSale (one query vs N)
+// Payment status logic (handle full credit case)
+// Add costPrice to saleItem (for profit calculations)
+// Concurrent sale number generation (race condition fix)
+// Index optimization (compound indexes based on query patterns)
+

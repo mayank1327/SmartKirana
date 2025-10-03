@@ -14,10 +14,7 @@ const quantity = Joi.number().positive().required().messages({
   'any.required': 'Quantity is required'
 });
 
-const reason = Joi.string().trim()
-.valid('purchase', 'sale', 'damage', 'expired', 'theft', 'correction', 'return')
-.required()
-.messages({
+const reason = Joi.string().trim().valid('purchase', 'sale', 'damage', 'expired', 'theft', 'correction', 'return').required().messages({
   'any.only': 'Reason must be one of [purchase, sale, damage, expired, theft, correction, return]',
   'string.base': 'Reason must be a string',
   'any.required': 'Reason is required'
@@ -27,24 +24,15 @@ const reference = Joi.string().allow('', null);
 const notes = Joi.string().allow('', null);
 
 // Reusable limit validator
-const limit = Joi.number()
-  .integer()
-  .min(1)
-  .max(200)
-  .default(20)
-  .messages({
+const limit = Joi.number().integer().min(1).max(200).default(20) .messages({
     'number.base': 'Limit must be a number',
     'number.integer': 'Limit must be an integer',
     'number.min': 'Limit must be at least 1',
     'number.max': 'Limit cannot exceed 200'
-  });
+});
 
 // Reusable page validator
-const page = Joi.number()
-  .integer()
-  .min(1)
-  .default(1)
-  .messages({
+const page = Joi.number().integer().min(1).default(1).messages({
     'number.base': 'Page must be a number',
     'number.integer': 'Page must be an integer',
     'number.min': 'Page must be at least 1'
@@ -52,7 +40,7 @@ const page = Joi.number()
 
 
 // Schemas
-const updateStock = Joi.object({
+const updateStockSchema = Joi.object({
   productId,
   quantity,
   movementType: Joi.string().valid('IN', 'OUT', 'ADJUSTMENT').uppercase().required(),
@@ -61,7 +49,7 @@ const updateStock = Joi.object({
   notes
 });
 
-const addStock = Joi.object({
+const addStockSchema = Joi.object({
   productId,
   quantity,
   reason,
@@ -69,7 +57,7 @@ const addStock = Joi.object({
   notes
 });
 
-const reduceStock = Joi.object({
+const reduceStockSchema = Joi.object({
   productId,
   quantity,
   reason,
@@ -77,7 +65,7 @@ const reduceStock = Joi.object({
   notes
 });
 
-const adjustStock = Joi.object({
+const adjustStockSchema = Joi.object({
   productId,
   newQuantity: Joi.number().min(0).required().messages({
     'number.min': 'Quantity cannot be negative'
@@ -87,20 +75,20 @@ const adjustStock = Joi.object({
 });
 
 // 4. Query parameter validation
-const getStockHistoryQuery = Joi.object({
+const getStockHistoryQuerySchema = Joi.object({
   limit,
   page
 });
 
-const recentMovementsQuery = Joi.object({
+const recentMovementsQuerySchema = Joi.object({
   limit,
 });
 
 module.exports = {
-  updateStock,
-  addStock,
-  reduceStock,
-  adjustStock,
-  getStockHistoryQuery,
-  recentMovementsQuery
+  updateStockSchema,
+  addStockSchema,
+  reduceStockSchema,
+  adjustStockSchema,
+  getStockHistoryQuerySchema,
+  recentMovementsQuerySchema
 };
