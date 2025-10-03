@@ -11,14 +11,14 @@ class SalesRepository {
     async findSaleById(id, populate = [], session = null) {
       let query = Sale.findById(id).session(session);
       populate.forEach(p => query = query.populate(p.path, p.select));
-      return query;
+      return query.exec();
     }
   
     async findSales(filter = {}, options = {}, session = null) {
       const { skip = 0, limit = 20, sort = { saleDate: -1 }, select = '', populate = [] } = options;
       let query = Sale.find(filter).sort(sort).skip(skip).limit(limit).select(select).session(session);
       populate.forEach(p => query = query.populate(p.path, p.select));
-      return query;
+      return query.exec();
     }
   
     async countDocuments(filter, session = null) {
@@ -36,3 +36,10 @@ class SalesRepository {
   }
   
   module.exports = new SalesRepository();
+
+  //Current: SalesRepository queries Product model directly
+  //Benefits of separation:
+// * ProductRepository can be reused (Sales, Purchase, Inventory services)
+// * SalesRepository focused on Sale model only
+// * Clearer boundaries
+// Your current approach works but note for refinement.
