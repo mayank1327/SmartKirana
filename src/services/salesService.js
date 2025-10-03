@@ -15,37 +15,57 @@ class SalesService {
       throw new Error('Sale must contain at least one item');
     }
 
-    // Validate stock availability for all items first
+    // Fetch all products once
+    const productIds = items.map(item => item.productId);
+
+    const products = await salesRepository.findProducts(
+      { _id: { $in: productIds }, isActive: true },
+      session
+    );
+
+    // Create lookup map
+    const productMap = new Map(products.map(p => [p._id.toString(), p]));
+
+     // Validate using map
     for (const item of items) {
-      const product = await salesRepository.findProductById(item.productId, session);
-      if (!product || !product.isActive) {
+      const product = productMap.get(item.productId);
+      if (!product) {
         throw new Error(`Product not found: ${item.productId}`);
       }
-      
       if (product.currentStock < item.quantity) {
         throw new Error(`Insufficient stock for ${product.name}. Available: ${product.currentStock}, Required: ${item.quantity}`);
       }
     }
 
-    // Prepare sale items with product details and calculate totals
-    const saleItems = [];
-    let subtotal = 0;
-
-    for (const item of items) {
-      const product = await salesRepository.findProductById(item.productId, session);
+     // Prepare sale items with totals
+     const saleItems = items.map(item => {
+      const product = productMap.get(item.productId);
       const itemSubtotal = item.quantity * product.sellingPrice;
-      
-      saleItems.push({
+      return {
         product: product._id,
         productName: product.name,
         quantity: item.quantity,
         unitPrice: product.sellingPrice,
         subtotal: itemSubtotal
-      });
-      
-      subtotal += itemSubtotal;
-    }
+      };
+    });
+    // Calculate subtotal for the sale 
+    const subtotal = saleItems.reduce((sum, item) => sum + item.subtotal, 0);
 
+
+    // Validate tax, discount, and creditAmount
+    if (tax < 0 || tax > 100) {
+      throw new Error('Tax percentage must be between 0 and 100');
+    }
+    
+    if (discount < 0 || discount > subtotal) {
+      throw new Error('Discount cannot exceed subtotal');
+    }
+    
+    if (creditAmount < 0 || creditAmount > totalAmount) {
+      throw new Error('Credit amount cannot exceed total amount');
+    }
+   
     // Calculate final amounts
     const taxAmount = (subtotal * tax) / 100;
     const totalAmount = subtotal + taxAmount - discount;
@@ -240,3 +260,10 @@ class SalesService {
 }
 
 module.exports = new SalesService();
+
+// Optimizations Needed:
+
+// Batch product fetching - One query instead of N
+// Payment status logic - Handle full credit case
+// Validation - Tax/discount/credit amount ranges
+// Error messages - More specific (which item failed)
