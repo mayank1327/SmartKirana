@@ -25,7 +25,7 @@ router.post('/adjust-stock', validate(inventoryValidation.adjustStock),adjustSto
 
 // History and summary routes
 router.get('/summary', getStockSummary);
-router.get('/recent-movements', getRecentMovements);
-router.get('/history/:productId', getStockHistory);
+router.get('/recent-movements', validate(inventoryValidation.recentMovementsQuery, 'query'),getRecentMovements);
+router.get('/history/:productId', validate(inventoryValidation.getStockHistoryQuery, 'query'),  getStockHistory);
 
 module.exports = router;
