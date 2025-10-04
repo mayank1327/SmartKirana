@@ -148,6 +148,31 @@ purchaseSchema.pre('save', async function(next) {
   next();
 });
 
+purchaseSchema.pre('save', function(next) {
+  // Paid amount can't exceed total
+  if (this.paidAmount > this.totalAmount) {
+    return next(new Error('Paid amount cannot exceed total amount'));
+  }
+  
+  // Update payment status based on paidAmount
+  if (this.paidAmount === 0) {
+    this.paymentStatus = 'pending';
+  } else if (this.paidAmount === this.totalAmount) {
+    this.paymentStatus = 'paid';
+  } else {
+    this.paymentStatus = 'partial';
+  }
+  
+  next();
+});
+
+purchaseItemSchema.pre('save', function(next) {
+  const expectedSubtotal = this.quantity * this.unitCost;
+  if (Math.abs(this.subtotal - expectedSubtotal) > 0.01) {
+    return next(new Error('Item subtotal mismatch'));
+  }
+  next();
+});
 // Virtual for remaining payment amount
 purchaseSchema.virtual('remainingAmount').get(function() {
   return this.totalAmount - this.paidAmount;
@@ -159,3 +184,5 @@ purchaseSchema.virtual('paymentPercentage').get(function() {
 });
 
 module.exports = mongoose.model('Purchase', purchaseSchema);
+
+// Minor enhancements (supplier reference, delivery tracking, validation hooks) can be added during refinement.

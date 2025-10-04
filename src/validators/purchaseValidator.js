@@ -21,12 +21,13 @@ const itemSchema = Joi.object({
 // Supplier schema
 const supplierSchema = Joi.object({
   name: Joi.string().required().messages({
-    'any.required': 'Supplier name is required',
-    'string.empty': 'Supplier name cannot be empty'
+    'any.required': 'Supplier name is required'
   }),
-  contact: Joi.string().allow('', null),
-  email: Joi.string().email().allow('', null),
-  phone: Joi.string().allow('', null)
+  contactPerson: Joi.string().max(100).allow('', null),
+  phone: Joi.string().pattern(/^[6-9]\d{9}$/).allow('', null).messages({
+    'string.pattern.base': 'Invalid phone number format'
+  }),
+  address: Joi.string().max(300).allow('', null)
 });
 
 // Create purchase validation
@@ -54,9 +55,16 @@ const updatePaymentSchema = Joi.object({
 // Query validation schema for filters
 const getPurchasesQuerySchema = Joi.object({
   startDate: Joi.date().optional(),
-  endDate: Joi.date().optional(),
+  endDate: Joi.date()
+    .optional()
+    .when('startDate', {
+      is: Joi.exist(),
+      then: Joi.date().min(Joi.ref('startDate')).messages({
+        'date.min': 'End date must be after start date'
+      })
+    }),
   paymentStatus: Joi.string().valid('pending', 'partial', 'paid').optional(),
-  deliveryStatus: Joi.string().optional(),
+  deliveryStatus: Joi.string().valid('pending', 'partial', 'delivered').optional(),
   supplier: Joi.string().optional(),
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(20)

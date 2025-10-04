@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 const inventoryService = require('./inventoryService');
+const purchaseRepository = require('../repositories/purchaseRepository'); // Add this
 
 class PurchaseService {
   // Create new purchase with automatic stock addition
   async createPurchase(purchaseData, userId) {
-
   const session = await mongoose.startSession();
     return await session.withTransaction(async () => {
     const { 
@@ -29,9 +29,19 @@ class PurchaseService {
     const purchaseItems = [];
     let subtotal = 0;
 
+    // Fetch all products once
+    const productIds = items.map(item => item.productId);
+    const products = await purchaseRepository.findProducts(
+         { _id: { $in: productIds }, isActive: true },
+         session
+    );
+
+// Create lookup map
+    const productMap = new Map(products.map(p => [p._id.toString(), p]));
+
     for (const item of items) {
 
-      const product = await purchaseRepository.findProductById(item.productId);
+      const product = productMap.get(item.productId);
 
       if (!product || !product.isActive) {
         throw new Error(`Product not found: ${item.productId}`);
@@ -97,8 +107,9 @@ class PurchaseService {
     ], session);
      
     return populatedPurchase;
-  });
-}
+  }).finally(() => session.endSession());
+} 
+
   
   // Get all purchases with filtering
   async getPurchases(query = {}) {
@@ -163,10 +174,15 @@ class PurchaseService {
   }
 
   // Update payment status // here we also adding transaction session 
-  async updatePaymentStatus(purchaseId, paymentData) {
+  async updatePaymentStatus(purchaseId, paymentData, session = null) {
     const { paidAmount, paymentStatus, notes } = paymentData;
+
+    const ownSession = !session;
+    session = session || await mongoose.startSession();
     
-    const purchase = await PurchaseRepository.findPurchaseById(purchaseId);
+    try {
+    return await session.withTransaction(async () => {
+    const purchase = await purchaseRepository.findPurchaseById(purchaseId, [], session);
     if (!purchase) {
       throw new Error('Purchase not found');
     }
@@ -185,13 +201,17 @@ class PurchaseService {
     
     if (notes) purchase.notes = notes;
     
-    await purchaseRepository.save(purchase);
+    await purchaseRepository.save(purchase, session);
     return purchase;
+  });
+    } finally {
+      if (ownSession) session.endSession();
+    }
   }
 
   // Get pending payments summary
   async getPendingPayments() {
-    const pendingPurchases = await PurchaseRepository.findPurchase(
+    const pendingPurchases = await purchaseRepository.findPurchases(
       { paymentStatus: { $in: ['pending', 'partial'] } },
       'purchaseNumber supplier totalAmount paidAmount paymentDueDate purchaseDate',
       { paymentDueDate: 1, purchaseDate: -1 }
@@ -227,7 +247,7 @@ class PurchaseService {
 
   // Get supplier summary
   async getSupplierSummary() {
-    const supplierStats = await PurchaseRepository.aggregate([
+    const supplierStats = await purchaseRepository.aggregate([
       {
         $group: {
           _id: '$supplier.name',
@@ -259,7 +279,7 @@ class PurchaseService {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    const analytics = await PurchaseRepository.aggregate([
+    const analytics = await purchaseRepository.aggregate([
       {
         $match: {
           purchaseDate: { $gte: startDate }
@@ -281,6 +301,35 @@ class PurchaseService {
     ]);
     
     return analytics;
+  }
+
+  async getTodaysPurchaseSummary() {
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    
+    const [result, aggregate] = await Promise.all([
+      this.getPurchases({ startDate: todayString, endDate: todayString, limit: 50 }),
+      purchaseRepository.aggregate([
+        { $match: {
+          purchaseDate: {
+            $gte: new Date(todayString),
+            $lte: new Date(todayString + 'T23:59:59.999Z')
+          }
+        }},
+        { $group: {
+          _id: null,
+          totalPurchases: { $sum: 1 },
+          totalAmount: { $sum: '$totalAmount' },
+          totalItems: { $sum: { $size: '$items' } }
+        }}
+      ])
+    ]);
+    
+    return {
+      date: todayString,
+      summary: aggregate[0] || { totalPurchases: 0, totalAmount: 0, totalItems: 0 },
+      purchases: result.purchases
+    };
   }
 }
 

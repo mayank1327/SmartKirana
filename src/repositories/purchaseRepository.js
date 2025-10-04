@@ -19,7 +19,7 @@ class PurchaseRepository {
     async findPurchaseById(id, populate = [], session = null) { // find Purchase by ID with optional populates
         let query = Purchase.findById(id).session(session);
         populate.forEach(p => query = query.populate(p.path, p.select));
-        return query;
+        return query.exec();
       }
 
     async findPurchases(filter = {}, options = {}, session = null) { // find Purchases with filtering, pagination, sorting, and populates
@@ -29,7 +29,7 @@ class PurchaseRepository {
         // Apply populates
         populate.forEach(p => query = query.populate(p.path, p.select));
     
-        return query;
+        return query.exec();
       }
 
       async countDocuments(filter, session = null) { // count Documents matching filter

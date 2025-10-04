@@ -6,21 +6,6 @@ const createPurchase = async (req, res, next) => {
     const purchaseData = req.body;
     const userId = req.user._id;
 
-    // Validate required fields
-    if (!purchaseData.items || purchaseData.items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Purchase must contain at least one item'
-      });
-    }
-
-    if (!purchaseData.supplier || !purchaseData.supplier.name) {
-      return res.status(400).json({
-        success: false,
-        error: 'Supplier information is required'
-      });
-    }
-
     const purchase = await purchaseService.createPurchase(purchaseData, userId);
 
     res.status(201).json({
@@ -70,13 +55,6 @@ const updatePaymentStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const paymentData = req.body;
-
-    if (paymentData.paidAmount === undefined) {
-      return res.status(400).json({
-        success: false,
-        error: 'Paid amount is required'
-      });
-    }
 
     const purchase = await purchaseService.updatePaymentStatus(id, paymentData);
 
@@ -138,21 +116,7 @@ const getPurchaseAnalytics = async (req, res, next) => {
 // Get today's purchases (quick access)
 const getTodaysPurchases = async (req, res, next) => {
   try {
-    const today = new Date();
-    const todayString = today.toISOString().split('T')[0];
-    
-    const result = await purchaseService.getPurchases({
-      startDate: todayString,
-      endDate: todayString,
-      limit: 50
-    });
-
-    // Calculate today's summary
-    const summary = {
-      totalPurchases: result.purchases.length,
-      totalAmount: result.purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0),
-      totalItems: result.purchases.reduce((sum, purchase) => sum + purchase.items.length, 0)
-    };
+    const result = await purchaseService.getTodaysPurchases();
 
     res.status(200).json({
       success: true,
