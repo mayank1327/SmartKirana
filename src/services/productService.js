@@ -49,7 +49,7 @@ class ProductService {
   // Get single product by ID
   async getProductById(id) {
 
-    const product = await productRepository.findById(this.getActiveFilter({_id : id})); // Ensure only active products
+    const product = await productRepository.findOne(this.getActiveFilter({_id : id})); // Ensure only active products
 
     if (!product) {
       throw new Error('Product not found'); // Better to use custom error classes in real apps

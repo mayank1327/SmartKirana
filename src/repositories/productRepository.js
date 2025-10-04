@@ -3,7 +3,8 @@ const Product = require('../models/Product');
 class ProductRepository {
 
 // Find multiple products with filters, pagination, sorting // TODO :> aggregation in future
-async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 }, projection = {} } = {}) { 
+async findAll(filters = {}, options = {}) {        
+  const { page = 1, limit = 10, sort = { createdAt: -1 }, projection = {} } = options;
 
   const skip = (page - 1) * limit;
 
@@ -17,18 +18,24 @@ async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 }, pr
 }
 
 // Fetch product by ID
-async findById(filter) {
-    return Product.findById(filter);
+async findById(id, session = null) {
+    return session 
+      ? Product.findById(id).session(session) 
+      : Product.findById(id);
 }
 
 // Fetch product by name or other unique fields
-async findOne(filter) {
-    return Product.findOne(filter);
+async findOne(filter, session = null) {
+    return session 
+      ? Product.findOne(filter).session(session) 
+      : Product.findOne(filter);
 }
 
 // Create new product
-async create(productData) {
-    return Product.create(productData);
+async create(productData, session = null) {
+    return session 
+      ? Product.create([productData], { session }) 
+      : Product.create(productData);
 }
 
 // Soft delete product
@@ -36,9 +43,9 @@ async softDelete(id) {
     return Product.findByIdAndUpdate(id, { isActive: false }, { new: true });
 }
 
-async save(product) {  // That's right ->Instance method to save changes to a product // Instance vs Static methods
-    return product.save();
-}
+async save(product, session = null) {// That's right ->Instance method to save changes to a product // Instance vs Static methods
+    return product.save({ session });
+  }
 
 // Find low stock products
 async findLowStock(extraFilters = {}) {
@@ -48,6 +55,10 @@ async findLowStock(extraFilters = {}) {
 // Count documents matching a filter
 async countDocuments(filter) {
     return Product.countDocuments(filter);
+}
+
+async aggregate(pipeline) {
+    return Product.aggregate(pipeline);
 }
 }
 
