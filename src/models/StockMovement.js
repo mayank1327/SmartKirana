@@ -33,10 +33,9 @@ const stockMovementSchema = new mongoose.Schema({
     enum: ['purchase', 'sale', 'damage', 'expired', 'theft', 'correction', 'return'],
     lowercase: true
   },
-  reference: { //Refinement: Consider ObjectId if you always reference internal documents.
-    type: String,
-    trim: true,
-    maxlength: [100, 'Reference cannot exceed 100 characters']
+  reference: {
+    model: { type: String, enum: ['Sale', 'Purchase', 'Adjustment'] },
+    id: { type: mongoose.Schema.Types.ObjectId, refPath: 'reference.model' }
   },
   notes: {
     type: String,
@@ -53,13 +52,27 @@ const stockMovementSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-stockMovementSchema.index({ product: 1, createdAt: -1 });
+// Add this for common queries
+stockMovementSchema.index({ product: 1, movementType: 1, createdAt: -1 });
 stockMovementSchema.index({ movementType: 1 });  // Less common than product-based queries - consider removing if not used.
 stockMovementSchema.index({ reason: 1 });
 stockMovementSchema.index({ performedBy: 1 });
 
-// Add this for common queries
-stockMovementSchema.index({ product: 1, movementType: 1, createdAt: -1 });
+stockMovementSchema.pre('save', function(next) {
+  const expectedNew = this.movementType === 'IN' 
+    ? this.previousStock + this.quantity
+    : this.previousStock - this.quantity;
+  
+  if (this.newStock !== expectedNew) {
+    return next(new Error('Stock calculation mismatch'));
+  }
+  next();
+});
+
+// Consideration: Prevent updates after creation
+stockMovementSchema.pre('findOneAndUpdate', function(next) {
+  next(new Error('Stock movements cannot be modified after creation'));
+});
 
 // Virtual for movement direction
 stockMovementSchema.virtual('movementDirection').get(function() {
