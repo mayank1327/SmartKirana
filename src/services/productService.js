@@ -8,8 +8,15 @@ class ProductService {
     
     let filter = this.getActiveFilter();
     
+    let sortOption = { createdAt: -1 };
+    let projection = {};
+
     // Search by name (text search)
-    if (search) filter.$text = { $search: search };
+    if (search) {
+      sortOption = { score: { $meta: "textScore" }, createdAt: -1 };
+      projection = { score: { $meta: "textScore" } };
+      filter.$text = { $search: search };
+    }
     
     // Filter by category
     if (category) filter.category = category;
@@ -19,7 +26,7 @@ class ProductService {
       filter.isLowStock = true; // TODO :return events driven notifications in future
     }
     // Pagination & sorting 
-    const { products, total } = await productRepository.findAll(filter, { page, limit, sort: { createdAt: -1 } });
+    const { products, total } = await productRepository.findAll(filter, { page, limit, sort: sortOption, projection });
 
      // 👉 Add computed values at service layer
      const enrichedProducts = products.map((p) => ({
@@ -60,7 +67,9 @@ class ProductService {
   async createProduct(productData) {
     // Check if product with same name exists
     const { name } = productData;
-    if(!name){ throw new Error('Product name is required'); }
+    if(!name){ 
+      throw new Error('Product name is required');
+     }
 
     const existingProduct = await productRepository.findOne(
       this.getActiveFilter({name})// Only consider active products
@@ -158,11 +167,9 @@ class ProductService {
 module.exports = new ProductService();
 
 // TODO: Future improvement
-// 1. Move all DB calls to ProductRepository to separate persistence from business logic. // done
 // 2. Consider MongoDB aggregation pipelines for profit/stock computations for large datasets.
 // 3. Add event-driven notifications for low stock items instead of just returning a flag.
 // Future enhancement:
-// javascript// Add relevance score
 // Product.find(
 //   { $text: { $search: search } },
 //   { score: { $meta: 'textScore' } }

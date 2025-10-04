@@ -3,11 +3,11 @@ const Product = require('../models/Product');
 class ProductRepository {
 
 // Find multiple products with filters, pagination, sorting // TODO :> aggregation in future
-async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 } } = {}) { 
+async findAll(filters = {}, { page = 1, limit = 10, sort = { createdAt: -1 }, projection = {} } = {}) { 
 
   const skip = (page - 1) * limit;
 
-  const products = await Product.find(filters)
+  const products = await Product.find(filters, projection)
     .sort(sort)
     .skip(skip)
     .limit(parseInt(limit));
