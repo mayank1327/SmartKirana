@@ -1,7 +1,7 @@
-
+const mongoose = require('mongoose');
 const inventoryService = require('./inventoryService');
 const salesRepository = require('../repositories/salesRepository');
-const mongoose = require('mongoose');
+const productRepository = require('../repositories/productRepository');
 
 class SalesService {
   // Create new sale with automatic stock deduction
@@ -18,7 +18,7 @@ class SalesService {
     // Fetch all products once
     const productIds = items.map(item => item.productId);
 
-    const products = await salesRepository.findProducts(
+    const products = await productRepository.findById(
       { _id: { $in: productIds }, isActive: true },
       session
     );

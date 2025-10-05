@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const inventoryService = require('./inventoryService');
 const purchaseRepository = require('../repositories/purchaseRepository'); // Add this
+const productRepository = require('../repositories/productRepository');
 
 class PurchaseService {
   // Create new purchase with automatic stock addition
@@ -31,7 +32,7 @@ class PurchaseService {
 
     // Fetch all products once
     const productIds = items.map(item => item.productId);
-    const products = await purchaseRepository.findProducts(
+    const products = await productRepository.findMany(
          { _id: { $in: productIds }, isActive: true },
          session
     );
@@ -95,13 +96,13 @@ class PurchaseService {
       );
 
       // Update product cost price with latest purchase price
-      await purchaseRepository.updateProductById(item.productId, {
+      await productRepository.updateById(item.productId, {
         costPrice: item.unitCost
       }, session);
     }
 
     // Populate the purchase with product details
-    const populatedPurchase = await purchaseRepository.findPurchaseById(purchase._id , [
+    const populatedPurchase = await purchaseRepository.findById(purchase._id , [
       { path: 'items.product', select: 'name category' },
       { path: 'purchasedBy', select: 'name email' }
     ], session);
@@ -160,7 +161,7 @@ class PurchaseService {
 
   // Get single purchase by ID
   async getPurchaseById(purchaseId) {
-    const purchase = await purchaseRepository.findPurchaseById(purchaseId, [
+    const purchase = await purchaseRepository.findById(purchaseId, [
       { path: 'items.product', select: 'name category sellingPrice' },
       { path: 'purchasedBy', select: 'name email' }
     ])
@@ -182,7 +183,7 @@ class PurchaseService {
     
     try {
     return await session.withTransaction(async () => {
-    const purchase = await purchaseRepository.findPurchaseById(purchaseId, [], session);
+    const purchase = await purchaseRepository.findById(purchaseId, [], session);
     if (!purchase) {
       throw new Error('Purchase not found');
     }
