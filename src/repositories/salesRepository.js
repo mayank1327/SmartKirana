@@ -1,9 +1,7 @@
 const Sale = require('../models/Sale');
-const Product = require('../models/Product');
+
 class SalesRepository {
-    async findProductById(id, session = null) {
-      return Product.findById(id).session(session);
-    }
+   
     async createSale(data, session = null) {
       return Sale.create([data], { session }).then(docs => docs[0]);
     }

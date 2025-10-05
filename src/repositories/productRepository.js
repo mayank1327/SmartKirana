@@ -24,11 +24,22 @@ async findById(id, session = null) {
       : Product.findById(id);
 }
 
+async updateById(productId, update, session = null) { // update Product by ID
+  return Product.findByIdAndUpdate(productId, update, { new: true, session }); // return updated document
+}
+
 // Fetch product by name or other unique fields
 async findOne(filter, session = null) {
     return session 
       ? Product.findOne(filter).session(session) 
       : Product.findOne(filter);
+}
+
+
+async findMany(filter, session = null) {
+  return session 
+    ? Product.find(filter).session(session) 
+    : Product.find(filter);
 }
 
 // Create new product

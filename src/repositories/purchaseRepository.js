@@ -3,20 +3,12 @@ const Purchase = require('../models/Purchase');
 
 class PurchaseRepository {
 
-    async findProductById(id ,  session = null) {  // find Product by ID
-        return Product.findById(id).session(session);
-    }
-
     async createPurchase(data, session = null) {   // create New Purchase
        // If session exists, pass it to create
        return Purchase.create([data], { session }).then(docs => docs[0]);
     }
 
-    async updateProductById(productId, update, session = null) { // update Product by ID
-        return Product.findByIdAndUpdate(productId, update, { new: true, session }); // return updated document
-    }
-
-    async findPurchaseById(id, populate = [], session = null) { // find Purchase by ID with optional populates
+    async findById(id, populate = [], session = null) { // find Purchase by ID with optional populates
         let query = Purchase.findById(id).session(session);
         populate.forEach(p => query = query.populate(p.path, p.select));
         return query.exec();
@@ -30,7 +22,7 @@ class PurchaseRepository {
         populate.forEach(p => query = query.populate(p.path, p.select));
     
         return query.exec();
-      }
+    }
 
       async countDocuments(filter, session = null) { // count Documents matching filter
         return Purchase.countDocuments(filter).session(session);
