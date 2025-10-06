@@ -18,7 +18,7 @@ class SalesService {
     // Fetch all products once
     const productIds = items.map(item => item.productId);
 
-    const products = await productRepository.findById(
+    const products = await productRepository.findMany(
       { _id: { $in: productIds }, isActive: true },
       session
     );
@@ -32,8 +32,12 @@ class SalesService {
       if (!product) {
         throw new Error(`Product not found: ${item.productId}`);
       }
+      console.log(item.quantity, product.currentStock);
       if (product.currentStock < item.quantity) {
-        throw new Error(`Insufficient stock for ${product.name}. Available: ${product.currentStock}, Required: ${item.quantity}`);
+        
+        const error = new Error(`Insufficient stock for ${product.name}. Available: ${product.currentStock}, Required: ${item.quantity}`);
+        error.status = 400;
+        throw error;
       }
     }
 
@@ -61,15 +65,17 @@ class SalesService {
     if (discount < 0 || discount > subtotal) {
       throw new Error('Discount cannot exceed subtotal');
     }
-    
-    if (creditAmount < 0 || creditAmount > totalAmount) {
+  
+     // Calculate final amounts
+     const taxAmount = (subtotal * tax) / 100;
+     const totalAmount = subtotal + taxAmount - discount;
+
+     if (creditAmount < 0 || creditAmount > totalAmount) {
       throw new Error('Credit amount cannot exceed total amount');
     }
+ 
    
-    // Calculate final amounts
-    const taxAmount = (subtotal * tax) / 100;
-    const totalAmount = subtotal + taxAmount - discount;
-
+    
     // Create sale record
     const sale = await salesRepository.createSale({
       items: saleItems,
