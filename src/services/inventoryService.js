@@ -4,12 +4,10 @@ const stockMovementRepository = require('../repositories/stockMovementRepository
 
 class InventoryService {
   // Update stock with movement tracking
-  async updateStock(productId, quantity, movementType, reason, userId, reference = '', notes = '', session = null) {
-    const ownSession = !session;
-    session = session ? session : await mongoose.startSession();
-    try {
-    return await session.withTransaction(async () => {
-    const product = await productRepository.findById(productId, session);
+async updateStock(productId, quantity, movementType, reason, userId, reference = '', notes = '', session = null) {
+  // Core business logic extracted to separate method
+  const updateStockLogic = async (activeSession) => {
+    const product = await productRepository.findById(productId, activeSession);
     if (!product || !product.isActive) {
       throw new Error('Product not found');
     }
@@ -25,19 +23,21 @@ class InventoryService {
       
       // Prevent negative stock
       if (newStock < 0) {
-        throw new Error(`Insufficient stock. Available: ${previousStock}, Required: ${quantity}`);
+        const error = new Error(`Insufficient stock. Available: ${previousStock}, Required: ${quantity}`);
+        error.status = 400;
+        throw error;
       }
     } else if (movementType === 'ADJUSTMENT') {
-      if (quantity < 0) { // Stock can be 0 (out of stock) but not negative!
+      if (quantity < 0) {
         throw new Error('Adjustment quantity cannot be negative');
       }
-         newStock = quantity; // Direct stock adjustment
+      newStock = quantity; // Direct stock adjustment
     }
 
     // Update product stock
     product.currentStock = newStock;
-    product.isLowStock = newStock <= product.minStockLevel; // Update low stock flag
-    await productRepository.save(product, session);
+    product.isLowStock = newStock <= product.minStockLevel;
+    await productRepository.save(product, activeSession);
 
     // Create stock movement record
     const stockMovement = await stockMovementRepository.create({
@@ -50,18 +50,29 @@ class InventoryService {
       reference,
       notes,
       performedBy: userId
-    }, session);
+    }, activeSession);
 
     return {
       product,
       stockMovement
     };
-  
-  });
-} finally {
-  if (ownSession)
-   session.endSession();
-}
+  };
+
+  // Handle session management based on whether session was provided
+  if (session) {
+    // Use existing session WITHOUT withTransaction (already in a transaction)
+    return await updateStockLogic(session);
+  } else {
+    // Create new session and use withTransaction
+    const newSession = await mongoose.startSession();
+    try {
+      return await newSession.withTransaction(async () => {
+        return await updateStockLogic(newSession);
+      });
+    } finally {
+      await newSession.endSession();
+    }
+  }
 }
 
   // Add stock (purchase/return)
