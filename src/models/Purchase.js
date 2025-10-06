@@ -124,7 +124,7 @@ const purchaseSchema = new mongoose.Schema({
 purchaseSchema.index({ purchaseDate: -1 });
 purchaseSchema.index({ paymentStatus: 1 });
 purchaseSchema.index({ 'supplier.name': 1 });
-purchaseSchema.index({ purchaseNumber: 1 });
+
 
 // Auto-generate purchase number
 purchaseSchema.pre('save', async function(next) {
