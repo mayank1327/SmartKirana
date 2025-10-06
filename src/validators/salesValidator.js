@@ -26,7 +26,7 @@ const createSaleSchema = Joi.object({
   }).optional(),
   paymentMethod: Joi.string().valid('cash', 'card', 'upi', 'credit').required(),
   tax: Joi.number().min(0).max(100),  // Tax can't exceed 100%
-  discount: Joi.number().min(0).max(Joi.ref('subtotal')),  // Can't exceed subtotal (needs custom validator)
+  // discount: Joi.number().min(0).max(Joi.ref('subtotal')),  // Can't exceed subtotal (needs custom validator)
  // Conditional validation
   creditAmount: Joi.when('paymentMethod', {
   is: 'credit',
