@@ -15,3 +15,6 @@ dist/
 
 # VS Code workspace settings
 .vscode/
+
+# Test
+coverage
