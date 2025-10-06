@@ -59,13 +59,21 @@ stockMovementSchema.index({ reason: 1 });
 stockMovementSchema.index({ performedBy: 1 });
 
 stockMovementSchema.pre('save', function(next) {
-  const expectedNew = this.movementType === 'IN' 
-    ? this.previousStock + this.quantity
-    : this.previousStock - this.quantity;
-  
-  if (this.newStock !== expectedNew) {
+  let expectedNew;
+
+  if (this.movementType === 'ADJUSTMENT') {
+    expectedNew = this.newStock; // skip validation or ensure quantity matches diff
+  } else if (this.movementType === 'IN') {
+    expectedNew = this.previousStock + this.quantity;
+  } else {
+    // OUT / SALE / etc.
+    expectedNew = this.previousStock - this.quantity;
+  }
+
+  if (this.movementType !== 'ADJUSTMENT' && this.newStock !== expectedNew) {
     return next(new Error('Stock calculation mismatch'));
   }
+
   next();
 });
 
