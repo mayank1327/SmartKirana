@@ -9,7 +9,9 @@ class AuthService {
     const existingUser = await userRepository.findByEmail(email); // Check if user already exists
 
     if (existingUser) { //TODO: Better to use custom error classes in real apps
-      throw new Error('User already exists'); 
+      const error = new Error('User already exists');
+      error.status = 400; // or 409 (conflict)
+      throw error;
     }
 
     const user = await userRepository.create({ name, email, password, role }); // Create new user
@@ -33,7 +35,10 @@ class AuthService {
     const user = await userRepository.findByEmail(email, true); // Include password for comparison
 
     if (!user || !(await user.comparePassword(password))) { 
-      throw new Error('Invalid credentials'); // TODO : Better to use custom error classes in real apps
+     // TODO : Better to use custom error classes in real apps
+      const error = new Error('Invalid credentials');
+      error.status = 401; // or 409 (conflict)
+      throw error;
     }
 
     const token = generateToken(user._id); // Generate JWT token
