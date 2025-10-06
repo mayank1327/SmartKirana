@@ -11,6 +11,7 @@ const register = async (req, res, next) => {
     // // 3. Send HTTP response
     res.status(201).json({
       success: true,
+      email, // This is right to send email with register..
       ...result
     });
   } catch (error) {
