@@ -32,6 +32,8 @@ class PurchaseService {
 
     // Fetch all products once
     const productIds = items.map(item => item.productId);
+
+    
     const products = await productRepository.findMany(
          { _id: { $in: productIds }, isActive: true },
          session
@@ -45,7 +47,9 @@ class PurchaseService {
       const product = productMap.get(item.productId);
 
       if (!product || !product.isActive) {
-        throw new Error(`Product not found: ${item.productId}`);
+        const error = new Error(`Product not found: ${item.productId}`);
+        error.status = 400;
+        throw error;
       }
 
       if (!item.unitCost || item.unitCost <= 0) {
@@ -168,7 +172,9 @@ class PurchaseService {
       
     
     if (!purchase) {
-      throw new Error('Purchase not found');
+      const error = new Error('Purchase not found');
+      error.status = 404;
+      throw error; 
     }
     
     return purchase;
@@ -185,12 +191,16 @@ class PurchaseService {
     return await session.withTransaction(async () => {
     const purchase = await purchaseRepository.findById(purchaseId, [], session);
     if (!purchase) {
-      throw new Error('Purchase not found');
+      const error =  new Error('Purchase not found');
+      error.status = 404;
+      throw error;
     }
 
     // Validate payment amount
     if (paidAmount < 0 || paidAmount > purchase.totalAmount) {
-      throw new Error('Invalid payment amount');
+      const error = new Error('Invalid payment amount');
+      error.status = 400;
+      throw error;
     }
 
     // Update payment details
@@ -214,8 +224,10 @@ class PurchaseService {
   async getPendingPayments() {
     const pendingPurchases = await purchaseRepository.findPurchases(
       { paymentStatus: { $in: ['pending', 'partial'] } },
-      'purchaseNumber supplier totalAmount paidAmount paymentDueDate purchaseDate',
-      { paymentDueDate: 1, purchaseDate: -1 }
+      {
+       select : 'purchaseNumber supplier totalAmount paidAmount paymentDueDate purchaseDate',
+       sort : { paymentDueDate: 1, purchaseDate: -1 }
+      }
     )
     
 
