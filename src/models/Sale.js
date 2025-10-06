@@ -104,7 +104,7 @@ const saleSchema = new mongoose.Schema({
 saleSchema.index({ saleDate: -1 });
 saleSchema.index({ paymentMethod: 1 });
 saleSchema.index({ soldBy: 1 });
-saleSchema.index({ saleNumber: 1 });
+
 
 // Auto-generate sale number
 saleSchema.pre('save', async function(next) {  // TODO : ATOMIC COUNTER 
