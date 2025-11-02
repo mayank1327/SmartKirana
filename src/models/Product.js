@@ -7,11 +7,12 @@ const productSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Product name cannot exceed 100 characters']
   },
-  unit: { // read above categories TODO
+  unit: {
     type: String,
     required: [true, 'Unit is required'],
-    enum: ['packets', 'kg', 'liters', 'pieces', 'boxes', 'bags', 'other'],
-    default: 'piece'
+    trim: true,
+    lowercase: true
+    // No enum - full flexibility
   },
   costPrice: { // purchase price
     type: Number,
@@ -55,12 +56,9 @@ const productSchema = new mongoose.Schema({
 });
 
 // Indexes for better search performance
-productSchema.index({ name: 'text', category: 'text' }); // Text index for search functionality
-productSchema.index({ category: 1 }); // Index for category filtering
+productSchema.index({ name: 'text'}); // Text index for search functionality
+productSchema.index({ isActive: 1 }); // Filter active/inactive products
 productSchema.index({ currentStock: 1 }, { partialFilterExpression: { isActive: true, isLowStock: true } }); // Index for low stock queries and active products
-
-// At the end of your schema, after other indexes
-productSchema.index({ category: 1, isActive: 1 }); 
 
 // Ensure unique active product names (soft delete aware)
 productSchema.index(
