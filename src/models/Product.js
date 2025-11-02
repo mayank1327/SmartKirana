@@ -7,20 +7,25 @@ const productSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Product name cannot exceed 100 characters']
   },
-  category: { // TODO: Consider migrating categories/units to separate collections for flexibility and admin management
+  // category: { // TODO: Consider migrating categories/units to separate collections for flexibility and admin management
+  //   type: String,
+  //   required: [true, 'Category is required'],
+  //   trim: true,
+  //   enum: ['grocery', 'dairy', 'snacks', 'beverages', 'household', 'personal-care', 'other'],
+  //   default: 'other'
+  // },
+  unit: { // read above categories TODO
     type: String,
-    required: [true, 'Category is required'],
-    trim: true,
-    enum: ['grocery', 'dairy', 'snacks', 'beverages', 'household', 'personal-care', 'other'],
-    default: 'other'
+    required: [true, 'Unit is required'],
+    enum: ['piece', 'kg', 'liter', 'packet', 'box'],
+    default: 'piece'
   },
-  costPrice: {
+  costPrice: { // purchase price
     type: Number,
     required: [true, 'Cost price is required'],
     min: [0, 'Cost price must be positive']
   },
-
-  sellingPrice: {
+  sellingPrice: { // instead of selling price use minimum selling price?
     type: Number,
     required: [true, 'Selling price is required'],
     min: [0, 'Selling price must be positive'],
@@ -30,7 +35,6 @@ const productSchema = new mongoose.Schema({
       },
       message: 'Selling price must be greater than or equal to cost price'
     }
-    
   },
   currentStock: {
     type: Number,
@@ -43,12 +47,6 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Minimum stock level is required'],
     min: [0, 'Minimum stock level must be positive'], // Future enhancement: Let owner set per-product thresholds (already possible!).
     default: 10  
-  },
-  unit: { // read above categories TODO
-    type: String,
-    required: [true, 'Unit is required'],
-    enum: ['piece', 'kg', 'liter', 'packet', 'box'],
-    default: 'piece'
   },
   isActive: {
     type: Boolean,
