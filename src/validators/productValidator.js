@@ -3,7 +3,7 @@ const Joi = require('joi');
 // Base validation rules (reusable)
 const baseProductRules = {
   name: Joi.string().trim().max(100),
-  category: Joi.string().valid('grocery', 'dairy', 'snacks', 'beverages', 'household', 'personal-care', 'other'),
+  // category: Joi.string().valid('grocery', 'dairy', 'snacks', 'beverages', 'household', 'personal-care', 'other'),
   costPrice: Joi.number().min(0),
   sellingPrice: Joi.number().min(0),
   currentStock: Joi.number().min(0),
@@ -15,7 +15,7 @@ const baseProductRules = {
 // CREATE - all required
 const createProductSchema = Joi.object({
   name: baseProductRules.name.required(),
-  category: baseProductRules.category.required(),
+  // category: baseProductRules.category.required(),
   costPrice: baseProductRules.costPrice.required(),
   sellingPrice: baseProductRules.sellingPrice.required(),
   currentStock: baseProductRules.currentStock.required(),
