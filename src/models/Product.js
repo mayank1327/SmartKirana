@@ -7,17 +7,10 @@ const productSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Product name cannot exceed 100 characters']
   },
-  // category: { // TODO: Consider migrating categories/units to separate collections for flexibility and admin management
-  //   type: String,
-  //   required: [true, 'Category is required'],
-  //   trim: true,
-  //   enum: ['grocery', 'dairy', 'snacks', 'beverages', 'household', 'personal-care', 'other'],
-  //   default: 'other'
-  // },
   unit: { // read above categories TODO
     type: String,
     required: [true, 'Unit is required'],
-    enum: ['piece', 'kg', 'liter', 'packet', 'box'],
+    enum: ['packets', 'kg', 'liters', 'pieces', 'boxes', 'bags', 'other'],
     default: 'piece'
   },
   costPrice: { // purchase price
