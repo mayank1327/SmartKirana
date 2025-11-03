@@ -19,7 +19,7 @@ class ProductService {
     }
     
     // Filter by category
-    if (category) filter.category = category;
+    // if (category) filter.category = category;
     
     // Filter low stock items
     if (lowStock === 'true') {
