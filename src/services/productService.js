@@ -1,26 +1,22 @@
 const productRepository = require('../repositories/productRepository');
+const { calculateProfitMargin, calculateProfitPercentage , calculateIsLowStock } = require('../utils/productUtils');
 
 class ProductService {
   // Get all products with search and filtering
   async getAllProducts(query = {}) {
 
-    const { search, category, lowStock, page = 1, limit = 10 } = query;
+    const { search, lowStock, page = 1, limit = 10 } = query;
     
     let filter = this.getActiveFilter();
     
-    let sortOption = { createdAt: -1 };
+    let sortOption = { createdAt: -1 }; // Todo : enhance sorting based on query params
     let projection = {};
 
     // Search by name (text search)
     if (search) {
-      sortOption = { score: { $meta: "textScore" }, createdAt: -1 };
-      projection = { score: { $meta: "textScore" } };
-      filter.$text = { $search: search };
+       filter.name = { $regex: search, $options: "i" };  // Case-insensitive partial match
     }
     
-    // Filter by category
-    // Remove category filter completely
-    // if (category) filter.category = category; ->deleted
     
     // Filter low stock items
     if (lowStock === 'true') {
@@ -32,8 +28,8 @@ class ProductService {
      // 👉 Add computed values at service layer
      const enrichedProducts = products.map((p) => ({
       ...p.toObject(), // Convert Mongoose doc to plain object
-      profitMargin: this.calculateProfitMargin(p),
-      profitMarginPercentage: this.calculateProfitPercentage(p),
+      profitMargin: calculateProfitMargin(p),
+      profitMarginPercentage: calculateProfitPercentage(p),
     }));
 
     
@@ -58,8 +54,8 @@ class ProductService {
 
     return {
       ...product.toObject(),
-      profitMargin: this.calculateProfitMargin(product),
-      profitMarginPercentage: this.calculateProfitPercentage(product),
+      profitMargin: calculateProfitMargin(product),
+      profitMarginPercentage: calculateProfitMarginPercentage(product),
       isLowStock: product.isLowStock
     };
   }
@@ -82,7 +78,7 @@ class ProductService {
     
     const product = await productRepository.create({
     ...productData,
-      isLowStock: this.calculateisLowStock(productData), // Determine low stock status on creation
+      isLowStock: calculateIsLowStock(productData), // Determine low stock status on creation
     });
 
 
@@ -116,7 +112,7 @@ class ProductService {
 
     // Recalculate if stock fields changed
      if ('currentStock' in updateData || 'minStockLevel' in updateData) {
-      product.isLowStock = this.calculateisLowStock(product); // Now has complete data
+      product.isLowStock = calculateIsLowStock(product); // Now has complete data
      }
 
      const updatedProduct = await productRepository.save(product);
@@ -124,11 +120,11 @@ class ProductService {
    // Add computed fields for service response
   return {
     ...updatedProduct.toObject(),
-    profitMargin: this.calculateProfitMargin(updatedProduct),
-    profitPercentage: this.calculateProfitPercentage(updatedProduct),
+    profitMargin: calculateProfitMargin(updatedProduct),
+    profitPercentage: calculateProfitPercentage(updatedProduct),
     isLowStock: updatedProduct.isLowStock
   };
-}
+  }
   
   // Soft delete product
   async deleteProduct(id) {
@@ -152,8 +148,8 @@ class ProductService {
     
     const enrichedProducts = products.map((p) => ({
       ...p.toObject(),
-      profitMargin: this.calculateProfitMargin(p),
-      profitMarginPercentage: this.calculateProfitPercentage(p),
+      profitMargin: calculateProfitMargin(p),
+      profitMarginPercentage: calculateProfitPercentage(p),
     }));
   
     return {
@@ -162,25 +158,10 @@ class ProductService {
     };
   }
 
-  // Helper to calculate profit margin
-  calculateProfitMargin(product) {
-    return product.sellingPrice - product.costPrice;
-  }
-
-  // Helper to calculate profit margin percentage
-  calculateProfitPercentage(product) {
-    if (product.costPrice === 0) return 0; // ✅ Prevents division by zero!
-    return ((product.sellingPrice - product.costPrice) / product.costPrice) * 100;
-  }
 
   // Centralized filter for active products
    getActiveFilter(extra = {}) {
     return { isActive: true, ...extra };
-  }
-
-  // isLowStock is handled in create/update methods
-  calculateisLowStock(product) {
-    return product.currentStock <= product.minStockLevel;
   }
 
 }
