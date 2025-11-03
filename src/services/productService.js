@@ -132,13 +132,16 @@ class ProductService {
   
   // Soft delete product
   async deleteProduct(id) {
-    const product = await productRepository.softDelete(id);
-    
+    // Check if product exists and is active
+    const product = await productRepository.findOne(this.getActiveFilter({ _id: id }));
+  
     if (!product) {
       throw new Error('Product not found');
     }
+
+    const deleteproduct = await productRepository.softDelete(id);
     
-    return product;
+    return deleteproduct;
   }
   
   async getLowStockProducts(options = {}) {
