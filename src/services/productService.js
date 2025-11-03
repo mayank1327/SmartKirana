@@ -19,7 +19,8 @@ class ProductService {
     }
     
     // Filter by category
-    // if (category) filter.category = category;
+    // Remove category filter completely
+    // if (category) filter.category = category; ->deleted
     
     // Filter low stock items
     if (lowStock === 'true') {
@@ -99,6 +100,17 @@ class ProductService {
     if (!product) {
        throw new Error('Product not found'); // Better to use custom error classes in real apps
     }
+
+  // ✅ Check duplicate name if name is being updated
+  if (updateData.name && updateData.name !== product.name) {
+    const existingProduct = await productRepository.findOne(
+      this.getActiveFilter({ name: updateData.name })
+    );
+    
+    if (existingProduct) {
+      throw new Error('Product with this name already exists');
+    }
+  }
 
     Object.assign(product, updateData); // Merge updates
 
