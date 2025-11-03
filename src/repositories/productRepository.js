@@ -17,6 +17,17 @@ async findAll(filters = {}, options = {}) {
   return { products, total };
 }
 
+ // Search products by name (text search or regex)
+ async search(searchText, extraFilters = {}, options = {}) {
+  const filters = {
+    name: { $regex: searchText, $options: 'i' }, // Case-insensitive partial match
+    isActive: true,
+    ...extraFilters
+  };
+  
+  return this.findAll(filters, options);
+}
+
 // Fetch product by ID
 async findById(id, session = null) {
     return session 
