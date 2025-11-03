@@ -82,7 +82,7 @@ async save(product, session = null) {// That's right ->Instance method to save c
 
 // Find low stock products with pagination
 async findLowStock(extraFilters = {}, options = {}) {
-  const filters = { isLowStock: true, isActive: true, ...extraFilters };
+  const filters = { isLowStock: true, ...extraFilters };
   return this.findAll(filters, { 
     ...options, 
     sort: { currentStock: 1 } 
