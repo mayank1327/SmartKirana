@@ -11,10 +11,16 @@ async findAll(filters = {}, options = {}) {
   const products = await Product.find(filters, projection)
     .sort(sort)
     .skip(skip)
-    .limit(parseInt(limit));
-  
-  const total = await Product.countDocuments(filters); // Extra DB Query
-  return { products, total };
+    .limit(parseInt(limit))
+    
+    const total = Object.keys(filters).length
+    ? await Product.countDocuments(filters)// Extra DB Query
+    : await Product.estimatedDocumentCount();
+                                              
+  return { 
+    products, 
+    total 
+  };
 }
 
  // Search products by name (text search or regex)
