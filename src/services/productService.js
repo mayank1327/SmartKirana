@@ -141,16 +141,22 @@ class ProductService {
     return product;
   }
   
-  // Get low stock products
-  async getLowStockProducts() {
-    const products = await productRepository.findLowStock(this.getActiveFilter());
+  async getLowStockProducts(options = {}) {
+    const { products, total, page, pages } = await productRepository.findLowStock(
+      this.getActiveFilter(), 
+      options
+    );
     
-    return products.map((p) => ({
+    const enrichedProducts = products.map((p) => ({
       ...p.toObject(),
       profitMargin: this.calculateProfitMargin(p),
       profitMarginPercentage: this.calculateProfitPercentage(p),
-      isLowStock: p.isLowStock,
     }));
+  
+    return {
+      products: enrichedProducts,
+      pagination: { current: page, pages, total }
+    };
   }
 
   // Helper to calculate profit margin
