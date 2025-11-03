@@ -25,7 +25,7 @@ async findAll(filters = {}, options = {}) {
     ...extraFilters
   };
   
-  return this.findAll(filters, options);
+  return this.findAll(filters, options); // 
 }
 
 // Fetch product by ID
@@ -51,6 +51,16 @@ async findMany(filter, session = null) {
   return session 
     ? Product.find(filter).session(session) 
     : Product.find(filter);
+}
+
+// Check if product exists by name
+async existsByName(name, excludeId = null) {
+  const filter = { name, isActive: true };
+  if (excludeId) {
+    filter._id = { $ne: excludeId };
+  }
+  const product = await Product.findOne(filter);
+  return !!product;
 }
 
 // Create new product
