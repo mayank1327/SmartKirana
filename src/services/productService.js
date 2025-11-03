@@ -10,7 +10,9 @@ class ProductService {
     let filter = this.getActiveFilter();
     
     let sortOption = { createdAt: -1 }; // Todo : enhance sorting based on query params
-    let projection = {};
+   
+    // Default projection → only essential fields for list view
+     let projection = { name: 1, unit: 1, currentStock: 1, isLowStock: 1 };
 
     // Search by name (text search)
     if (search) {
@@ -25,16 +27,9 @@ class ProductService {
     // Pagination & sorting 
     const { products, total } = await productRepository.findAll(filter, { page, limit, sort: sortOption, projection });
 
-     // 👉 Add computed values at service layer
-     const enrichedProducts = products.map((p) => ({
-      ...p.toObject(), // Convert Mongoose doc to plain object
-      profitMargin: calculateProfitMargin(p),
-      profitMarginPercentage: calculateProfitPercentage(p),
-    }));
-
     
     return {
-      products: enrichedProducts,
+      products: products.map(p => p.toObject()),
       pagination: {
         current: parseInt(page),
         pages: Math.ceil(total / limit),
@@ -55,15 +50,16 @@ class ProductService {
     return {
       ...product.toObject(),
       profitMargin: calculateProfitMargin(product),
-      profitMarginPercentage: calculateProfitMarginPercentage(product),
+      profitMarginPercentage: calculateProfitPercentage(product),
       isLowStock: product.isLowStock
     };
   }
   
   // Create new product
   async createProduct(productData) {
-    // Check if product with same name exists
+  
     const { name } = productData;
+    // Check if product with same name exists
     if(!name){ 
       throw new Error('Product name is required');
      }
@@ -75,10 +71,15 @@ class ProductService {
     if (existingProduct) {
       throw new Error('Product with this name already exists'); // Better to use custom error classes in real apps
     }
+
+
+  // low stock flag
+  const isLowStock = calculateIsLowStock(productData);
+
     
     const product = await productRepository.create({
     ...productData,
-      isLowStock: calculateIsLowStock(productData), // Determine low stock status on creation
+      isLowStock
     });
 
 
@@ -120,9 +121,6 @@ class ProductService {
    // Add computed fields for service response
   return {
     ...updatedProduct.toObject(),
-    profitMargin: calculateProfitMargin(updatedProduct),
-    profitPercentage: calculateProfitPercentage(updatedProduct),
-    isLowStock: updatedProduct.isLowStock
   };
   }
   
