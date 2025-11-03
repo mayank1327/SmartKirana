@@ -71,8 +71,8 @@ async create(productData, session = null) {
 }
 
 // Soft delete product
-async softDelete(id) {
-    return Product.findByIdAndUpdate(id, { isActive: false }, { new: true });
+async softDelete(id, session = null) {
+    return Product.findByIdAndUpdate(id, { isActive: false }, { new: true,  session});
 }
 
 async save(product, session = null) {// That's right ->Instance method to save changes to a product // Instance vs Static methods
