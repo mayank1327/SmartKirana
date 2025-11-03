@@ -79,10 +79,16 @@ async save(product, session = null) {// That's right ->Instance method to save c
     return product.save({ session });
   }
 
-// Find low stock products
-async findLowStock(extraFilters = {}) {
-    return Product.find({ isLowStock: true, ...extraFilters }).sort({ currentStock: 1 });
+
+// Find low stock products with pagination
+async findLowStock(extraFilters = {}, options = {}) {
+  const filters = { isLowStock: true, isActive: true, ...extraFilters };
+  return this.findAll(filters, { 
+    ...options, 
+    sort: { currentStock: 1 } 
+  });
 }
+
 
 // Count documents matching a filter
 async countDocuments(filter) {
