@@ -3,24 +3,22 @@ const Joi = require('joi');
 // Base validation rules (reusable)
 const baseProductRules = {
   name: Joi.string().trim().max(100),
-  // category: Joi.string().valid('grocery', 'dairy', 'snacks', 'beverages', 'household', 'personal-care', 'other'),
+  unit: Joi.string().trim().lowercase(),
   costPrice: Joi.number().min(0),
-  sellingPrice: Joi.number().min(0),
+  minSellingPrice: Joi.number().min(0),
   currentStock: Joi.number().min(0),
   minStockLevel: Joi.number().min(0),
-  unit: Joi.string().valid('piece', 'kg', 'liter', 'packet', 'box'),
   isActive: Joi.boolean()
 };
 
 // CREATE - all required
 const createProductSchema = Joi.object({
   name: baseProductRules.name.required(),
-  // category: baseProductRules.category.required(),
+  unit: baseProductRules.unit.required(),
   costPrice: baseProductRules.costPrice.required(),
-  sellingPrice: baseProductRules.sellingPrice.required(),
+  minSellingPrice: baseProductRules.minSellingPrice.required(),
   currentStock: baseProductRules.currentStock.required(),
   minStockLevel: baseProductRules.minStockLevel.required(),
-  unit: baseProductRules.unit.required(),
   isActive: baseProductRules.isActive
 }).custom((value, helpers) => {
   if (value.sellingPrice < value.costPrice) {

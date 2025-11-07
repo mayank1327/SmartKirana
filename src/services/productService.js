@@ -1,35 +1,30 @@
 const productRepository = require('../repositories/productRepository');
-const { calculateProfitMargin, calculateProfitPercentage , calculateIsLowStock } = require('../utils/productUtils');
+const { calculateIsLowStock } = require('../utils/productUtils');
 
 class ProductService {
   // Get all products with search and filtering
   async getAllProducts(query = {}) {
 
-    const { search, lowStock, page = 1, limit = 10 } = query;
-    
+    const { search, lowstock, page = 1, limit = 10 } = query;
     let filter = this.getActiveFilter();
-    
     let sortOption = { createdAt: -1 }; // Todo : enhance sorting based on query params
-   
     // Default projection → only essential fields for list view
-     let projection = { name: 1, unit: 1, currentStock: 1, isLowStock: 1 };
-
+     let projection = {name: 1, currentStock: 1};
     // Search by name (text search)
     if (search) {
        filter.name = { $regex: search, $options: "i" };  // Case-insensitive partial match
     }
-    
-    
-    // Filter low stock items
-    if (lowStock === 'true') {
-      filter.isLowStock = true; // TODO :return events driven notifications in future
+    if(lowstock === 'true'){ 
+      filter.$expr = { $lte: [ "$currentStock", "$minStockLevel" ] }; // currentStock <= minStockLevel
     }
     // Pagination & sorting 
     const { products, total } = await productRepository.findAll(filter, { page, limit, sort: sortOption, projection });
 
-    
     return {
-      products: products.map(p => p.toObject()),
+      products: products.map(p => ({
+        ...p.toObject(),
+        isLowStock: calculateIsLowStock(p),
+    })),
       pagination: {
         current: parseInt(page),
         pages: Math.ceil(total / limit),
@@ -37,24 +32,43 @@ class ProductService {
       }
     };
   }
-  
   // Get single product by ID
   async getProductById(id) {
-
-    const product = await productRepository.findOne(this.getActiveFilter({_id : id})); // Ensure only active products
-
-    if (!product) {
-      throw new Error('Product not found'); // Better to use custom error classes in real apps
+    try {
+      const product = await productRepository.findOne(
+        this.getActiveFilter({ _id: id })
+      );
+  
+      if (!product) {
+        const err = new Error('Product not found');
+        err.statusCode = 404;
+        throw err;
+      }
+  
+      return {
+        ...product.toObject(),
+        isLowStock: calculateIsLowStock(product),
+      };
+  
+    } catch (error) {
+     // ✅ Handle invalid MongoDB ObjectId
+    if (error.name === "CastError") {
+      const err = new Error("Invalid product ID");
+      err.statusCode = 404;
+      throw err;
     }
 
-    return {
-      ...product.toObject(),
-      profitMargin: calculateProfitMargin(product),
-      profitMarginPercentage: calculateProfitPercentage(product),
-      isLowStock: product.isLowStock
-    };
+    // ✅ If service already threw a 404, keep it
+    if (error.statusCode === 404) {
+      throw error;
+    }
+
+    // ✅ Unknown internal error → 500
+    const err = new Error("Internal server error");
+    err.statusCode = 500;
+    throw err;
+    }
   }
-  
   // Create new product
   async createProduct(productData) {
   
@@ -65,37 +79,31 @@ class ProductService {
      }
 
     const existingProduct = await productRepository.findOne(
-      this.getActiveFilter({name})// Only consider active products
+      this.getActiveFilter({name})
     );
   
     if (existingProduct) {
-      throw new Error('Product with this name already exists'); // Better to use custom error classes in real apps
+      const error = new Error('Product with this name already exists');
+      error.statusCode = 400;
+      throw error;
     }
-
-
-  // low stock flag
-  const isLowStock = calculateIsLowStock(productData);
-
     
-    const product = await productRepository.create({
-    ...productData,
-      isLowStock
-    });
-
+    const product = await productRepository.create(productData);
 
     return product;
   }
-  
   // Update product
   async updateProduct(id, updateData) {
-
+    try{
      // Fetch existing product with active filter
      const product = await productRepository.findOne(
         this.getActiveFilter({ _id: id })   
      );
     
     if (!product) {
-       throw new Error('Product not found'); // Better to use custom error classes in real apps
+      const erorr =  new Error('Product not found');
+      erorr.statusCode = 404; 
+      throw erorr;
     }
 
   // ✅ Check duplicate name if name is being updated
@@ -105,25 +113,43 @@ class ProductService {
     );
     
     if (existingProduct) {
-      throw new Error('Product with this name already exists');
+      const error =  new Error('Product with this name already exists');
+      error.statusCode = 400;
+      throw error;
     }
   }
 
+  if (updateData.currentStock !== undefined) {
+    delete updateData.currentStock; // Prevent accidental/manual change
+}
+
     Object.assign(product, updateData); // Merge updates
 
-    // Recalculate if stock fields changed
-     if ('currentStock' in updateData || 'minStockLevel' in updateData) {
-      product.isLowStock = calculateIsLowStock(product); // Now has complete data
-     }
-
-     const updatedProduct = await productRepository.save(product);
+    const updatedProduct = await productRepository.save(product);
 
    // Add computed fields for service response
   return {
     ...updatedProduct.toObject(),
   };
+} catch(error) {
+    // ✅ invalid MongoDB ObjectId → 404
+    if (error.name === "CastError") {
+      const err = new Error("Invalid product ID");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // ✅ Already known error (400, 404)
+    if (error.statusCode) {
+      throw error;
+    }
+
+    // ✅ Anything else → 500
+    const err = new Error("Internal server error");
+    err.statusCode = 500;
+    throw err;
+}
   }
-  
   // Soft delete product
   async deleteProduct(id) {
     // Check if product exists and is active
@@ -137,26 +163,6 @@ class ProductService {
     
     return deleteproduct;
   }
-  
-  async getLowStockProducts(options = {}) {
-    const { products, total, page, pages } = await productRepository.findLowStock(
-      this.getActiveFilter(), 
-      options
-    );
-    
-    const enrichedProducts = products.map((p) => ({
-      ...p.toObject(),
-      profitMargin: calculateProfitMargin(p),
-      profitMarginPercentage: calculateProfitPercentage(p),
-    }));
-  
-    return {
-      products: enrichedProducts,
-      pagination: { current: page, pages, total }
-    };
-  }
-
-
   // Centralized filter for active products
    getActiveFilter(extra = {}) {
     return { isActive: true, ...extra };
@@ -165,13 +171,3 @@ class ProductService {
 }
 
 module.exports = new ProductService();
-
-// TODO: Future improvement
-// 2. Consider MongoDB aggregation pipelines for profit/stock computations for large datasets.
-// 3. Add event-driven notifications for low stock items instead of just returning a flag.
-// Future enhancement:
-// Product.find(
-//   { $text: { $search: search } },
-//   { score: { $meta: 'textScore' } }
-// ).sort({ score: { $meta: 'textScore' } });
-// // Returns most relevant first

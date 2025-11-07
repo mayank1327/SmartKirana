@@ -5,12 +5,11 @@ const Sale = require('../../src/models/Sale');
 async function createTestProduct(overrides = {}) {
   return Product.create({
     name: 'Test Milk',
-    category: 'dairy',
+    unit: 'liter',
     costPrice: 40,
-    sellingPrice: 60,
+    minSellingPrice: 60,
     currentStock: 100,
     minStockLevel: 10,
-    unit: 'liter',
     isActive: true,
     ...overrides
   });

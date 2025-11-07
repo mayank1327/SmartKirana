@@ -14,21 +14,15 @@ const productSchema = new mongoose.Schema({
     lowercase: true
     // No enum - full flexibility
   },
-  costPrice: { // purchase price
+  costPrice: { 
     type: Number,
     required: [true, 'Cost price is required'],
     min: [0, 'Cost price must be positive']
   },
-  sellingPrice: { // instead of selling price use minimum selling price?
+  minSellingPrice: { 
     type: Number,
-    required: [true, 'Selling price is required'],
-    min: [0, 'Selling price must be positive'],
-    validate: { // Nested validation to ensure sellingPrice >= costPrice
-      validator: function() {
-        return this.sellingPrice >= this.costPrice;
-      },
-      message: 'Selling price must be greater than or equal to cost price'
-    }
+    required: [true, 'Minimum Selling price is required'],
+    min: [0, 'Minimum Selling price must be positive'],
   },
   currentStock: {
     type: Number,
@@ -46,11 +40,6 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  isLowStock: {
-    type: Boolean,
-    default: false,
-    index: true // Index to quickly find products needing restock
-  }
 }, {
   timestamps: true
 });
@@ -58,37 +47,7 @@ const productSchema = new mongoose.Schema({
 // Indexes for better search performance
 productSchema.index({ name: 'text'}); // Text index for search functionality
 productSchema.index({ isActive: 1 }); // Filter active/inactive products
-productSchema.index({ currentStock: 1 }, { partialFilterExpression: { isActive: true, isLowStock: true } }); // Index for low stock queries and active products
-
-// Ensure unique active product names (soft delete aware)
-productSchema.index(
-  { name: 1 },
-  { unique: true, partialFilterExpression: { isActive: true } }
-);
+productSchema.index( { name: 1 },{ unique: true, partialFilterExpression: { isActive: true } }); // Ensure unique active product names (soft delete aware)
 
 module.exports = mongoose.model('Product', productSchema);
-
-// TODO: Future refinement:
-// 1. Consider partial indexes for low stock queries to improve performance.
-//    e.g., { currentStock: 1 }, { partialFilterExpression: { isActive: true } }
-// 2. Consider compound indexes if queries combine multiple fields frequently.
-// 3. Currently using text index on name+category for MVP; later might split or optimize. 
-// Common query patterns dictate indexes:
-
-// SEE THOSE BELOW ALSO=> 
-// // Pattern 1: Active products by category (frequent)
-// { category: 1, isActive: 1 } // ✅ You have this
-
-// // Pattern 2: Low stock active products (dashboard)
-// { isActive: 1, isLowStock: 1 } // Consider adding
-
-// // Pattern 3: Product name lookup (autocomplete)
-// { name: 1 } // Consider adding (separate from text index)
-
-
-// Need separate collection when:
-// 1. Categories change frequently (admin adds new ones)
-// 2. Need metadata (category description, icon, display order)
-// 3. Need hierarchical categories (parent-child)
-
-// Category collection example:
+// SKU = stock keeping unit 

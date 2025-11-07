@@ -13,97 +13,38 @@ async findAll(filters = {}, options = {}) {
     .skip(skip)
     .limit(parseInt(limit))
     
-    const total = Object.keys(filters).length
-    ? await Product.countDocuments(filters)// Extra DB Query
-    : await Product.estimatedDocumentCount();
-                                              
+    const total = await Product.countDocuments(filters);                          
   return { 
     products, 
     total 
   };
 }
 
- // Search products by name (text search or regex)
- async search(searchText, extraFilters = {}, options = {}) {
-  const filters = {
-    name: { $regex: searchText, $options: 'i' }, // Case-insensitive partial match
-    isActive: true,
-    ...extraFilters
-  };
-  
-  return this.findAll(filters, options); // 
+// Fetch product by name or other unique fields
+async findOne(filter, session = null) {
+  return session 
+    ? Product.findOne(filter).session(session) 
+    : Product.findOne(filter);
 }
 
-// Fetch product by ID
-async findById(id, session = null) {
-    return session 
-      ? Product.findById(id).session(session) 
-      : Product.findById(id);
+// Create new product
+async create(productData) {
+  return Product.create(productData);
+}
+
+async save(product, session = null) {// That's right ->Instance method to save changes to a product // Instance vs Static methods
+  return product.save({ session });
 }
 
 async updateById(productId, update, session = null) { // update Product by ID
   return Product.findByIdAndUpdate(productId, update, { new: true, session }); // return updated document
 }
-
-// Fetch product by name or other unique fields
-async findOne(filter, session = null) {
-    return session 
-      ? Product.findOne(filter).session(session) 
-      : Product.findOne(filter);
-}
-
-
-async findMany(filter, session = null) {
-  return session 
-    ? Product.find(filter).session(session) 
-    : Product.find(filter);
-}
-
-// Check if product exists by name
-async existsByName(name, excludeId = null) {
-  const filter = { name, isActive: true };
-  if (excludeId) {
-    filter._id = { $ne: excludeId };
-  }
-  const product = await Product.findOne(filter);
-  return !!product;
-}
-
-// Create new product
-async create(productData, session = null) {
-    return session 
-      ? Product.create([productData], { session }) 
-      : Product.create(productData);
-}
-
 // Soft delete product
 async softDelete(id, session = null) {
-    return Product.findByIdAndUpdate(id, { isActive: false }, { new: true,  session});
-}
-
-async save(product, session = null) {// That's right ->Instance method to save changes to a product // Instance vs Static methods
-    return product.save({ session });
-  }
-
-
-// Find low stock products with pagination
-async findLowStock(extraFilters = {}, options = {}) {
-  const filters = { isLowStock: true, ...extraFilters };
-  return this.findAll(filters, { 
-    ...options, 
-    sort: { currentStock: 1 } 
-  });
+  return Product.findByIdAndUpdate(id, { isActive: false }, { new: true,  session});
 }
 
 
-// Count documents matching a filter
-async countDocuments(filter) {
-    return Product.countDocuments(filter);
-}
-
-async aggregate(pipeline) {
-    return Product.aggregate(pipeline);
-}
 }
 
 module.exports = new ProductRepository();

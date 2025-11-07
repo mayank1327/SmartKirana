@@ -46,7 +46,7 @@ const errorHandler = (err, req, res, next) => {
   
 
   // Bad Request Error (for client-side invalid input)
-  if (err.status === 400) {
+  if (err.statusCode === 400) {
     return res.status(400).json({
       success: false,
       error: err.message || 'Bad request'
@@ -54,7 +54,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Conflict Error (duplicate or conflicting resource)
-  if (err.status === 409) {
+  if (err.statusCode === 409) {
     return res.status(409).json({
       success: false,
       error: err.message || 'Conflict error'
@@ -63,7 +63,7 @@ const errorHandler = (err, req, res, next) => {
 
 
   // Fallback: unexpected or unhandled errors
-  res.status(err.status || 500).json({
+  res.status(err.statusCode || 500).json({
     success: false,
     error: err.message || 'Internal Server Error'
   });
