@@ -1,58 +1,152 @@
 const Joi = require('joi');
 
-// Item schema (each product in sale)
-const saleItemSchema = Joi.object({
-  productId: Joi.string().required().messages({
-    'string.empty': 'Product ID is required'
-  }),
-  quantity: Joi.number().integer().min(1).required().messages({
-    'number.min': 'Quantity must be at least 1'
-  })
-});
-
-const objectId = Joi.string()
-  .regex(/^[0-9a-fA-F]{24}$/)
-  .message('Invalid ObjectId')
-  .required();
-
-
-// Sale creation schema
+// Validation for creating a sale
 const createSaleSchema = Joi.object({
-  items: Joi.array().items(saleItemSchema).min(1).required(),
-  customerInfo: Joi.object({
-    name: Joi.string().allow('', null),
-    email: Joi.string().email().allow('', null),
-    phone: Joi.string().allow('', null)
-  }).optional(),
-  paymentMethod: Joi.string().valid('cash', 'card', 'upi', 'credit').required(),
-  tax: Joi.number().min(0).max(100),  // Tax can't exceed 100%
-  // discount: Joi.number().min(0).max(Joi.ref('subtotal')),  // Can't exceed subtotal (needs custom validator)
- // Conditional validation
-  creditAmount: Joi.when('paymentMethod', {
-  is: 'credit',
-  then: Joi.number().min(1).required(),  // Credit sales must have creditAmount
-  otherwise: Joi.number().min(0).default(0)
-  }),
-  notes: Joi.string().allow('', null)
+  items: Joi.array()
+    .items(
+      Joi.object({
+        productId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required()
+        .messages({
+            'string.pattern.base': 'Product ID must be a valid MongoDB ObjectId',
+            'any.required': 'Product ID is required'
+          }),
+        quantity: Joi.number().integer().min(1).required()
+          .messages({
+            'number.base': 'Quantity must be a number',
+            'number.min': 'Quantity must be at least 1',
+            'any.required': 'Quantity is required'
+          }),
+        unitPrice: Joi.number().positive().precision(2).required()
+          .messages({
+            'number.base': 'Unit price must be a number',
+            'number.positive': 'Unit price must be a positive number',
+            'any.required': 'Unit price is required'
+          })
+      })
+    )
+    .min(1).required()
+    .messages({
+      'array.min': 'Sale must contain at least one item',
+      'any.required': 'Items are required'
+    }),
+  
+  customerName: Joi.string()
+    .trim()
+    .max(100)
+    .allow('', null)
+    .optional()
+    .messages({
+      'string.max': 'Customer name cannot exceed 100 characters'
+    }),
+  
+  paymentMethod: Joi.string()
+    .valid('cash', 'upi', 'credit')
+    .lowercase()
+    .default('cash')
+    .messages({
+      'any.only': 'Payment method must be one of: cash, upi, credit'
+    }),
+  
+  soldBy: Joi.forbidden()
 });
 
-// Query schema for fetching sales
-const getSalesQuerySchema = Joi.object({
-  startDate: Joi.date().iso().optional(),
-  endDate: Joi.date().iso().optional(),
-  paymentMethod: Joi.string().valid('cash', 'card', 'upi', 'credit').optional(),
-  paymentStatus: Joi.string().valid('paid', 'partial').optional(),
-  soldBy: Joi.string().optional(),
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20)
+// Validation for getting sales (query parameters)
+const getSalesSchema = Joi.object({
+  startDate: Joi.date()
+    .iso()
+    .optional()
+    .messages({
+      'date.base': 'Start date must be a valid date',
+      'date.format': 'Start date must be in ISO format'
+    }),
+  
+  endDate: Joi.date()
+    .iso()
+    .min(Joi.ref('startDate'))
+    .optional()
+    .messages({
+      'date.base': 'End date must be a valid date',
+      'date.format': 'End date must be in ISO format',
+      'date.min': 'End date must be after start date'
+    }),
+  
+  paymentMethod: Joi.string()
+    .valid('cash', 'upi', 'credit')
+    .lowercase()
+    .optional()
+    .messages({
+      'any.only': 'Payment method must be one of: cash, upi, credit'
+    }),
+  
+  soldBy: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional()
+    .messages({
+      'string.pattern.base': 'Sold by must be a valid MongoDB ObjectId'
+    }),
+  
+  page: Joi.number()
+    .integer()
+    .min(1)
+    .default(1)
+    .messages({
+      'number.base': 'Page must be a number',
+      'number.min': 'Page must be at least 1'
+    }),
+  
+  limit: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(20)
+    .messages({
+      'number.base': 'Limit must be a number',
+      'number.min': 'Limit must be at least 1',
+      'number.max': 'Limit cannot exceed 100'
+    })
 });
 
-const getSaleByIdSchema = Joi.object({
-  id: objectId
+// Validation for sale ID parameter
+const saleIdSchema = Joi.object({
+  saleId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'Sale ID must be a valid MongoDB ObjectId',
+      'any.required': 'Sale ID is required'
+    })
 });
+
+// Validation for daily sales date parameter
+const dailySalesSchema = Joi.object({
+  date: Joi.date()
+    .iso()
+    .optional()
+    .messages({
+      'date.base': 'Date must be a valid date',
+      'date.format': 'Date must be in ISO format'
+    })
+});
+
+// Validation for sales analytics days parameter
+const salesAnalyticsSchema = Joi.object({
+  days: Joi.number()
+    .integer()
+    .min(1)
+    .max(365)
+    .default(7)
+    .messages({
+      'number.base': 'Days must be a number',
+      'number.min': 'Days must be at least 1',
+      'number.max': 'Days cannot exceed 365'
+    })
+});
+
 
 module.exports = {
   createSaleSchema,
-  getSalesQuerySchema,
-  getSaleByIdSchema
+  getSalesSchema,
+  saleIdSchema,
+  dailySalesSchema,
+  salesAnalyticsSchema,
 };
