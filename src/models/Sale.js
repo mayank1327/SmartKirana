@@ -10,6 +10,10 @@ const saleItemSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Product name is required']
   },
+  unit: { 
+    type: String, 
+    required: true 
+  },       
   quantity: {
     type: Number,
     required: [true, 'Quantity is required'],
@@ -20,7 +24,7 @@ const saleItemSchema = new mongoose.Schema({
     required: [true, 'Unit price is required'],
     min: [0, 'Unit price cannot be negative']
   },
-  subtotal: {
+  lineTotal: {
     type: Number,
     required: [true, 'Subtotal is required'],
     min: [0, 'Subtotal cannot be negative']
@@ -33,22 +37,11 @@ const saleSchema = new mongoose.Schema({
     unique: true,
     // required: [true, 'Sale number is required']
   },
+  saleDate: {
+    type: Date,
+    default: Date.now
+  },
   items: [saleItemSchema],
-  subtotal: {
-    type: Number,
-    required: [true, 'Subtotal is required'],
-    min: [0, 'Subtotal cannot be negative']
-  },
-  tax: {
-    type: Number,
-    default: 0,
-    min: [0, 'Tax cannot be negative']
-  },
-  discount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Discount cannot be negative']
-  },
   totalAmount: {
     type: Number,
     required: [true, 'Total amount is required'],
@@ -57,45 +50,25 @@ const saleSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     required: [true, 'Payment method is required'],
-    enum: ['cash', 'card', 'upi', 'credit'],
+    enum: ['cash', 'upi', 'credit'],
+    default: 'cash',
     lowercase: true
-  },
-  paymentStatus: {
-    type: String,
-    enum: ['paid', 'pending', 'partial'],
-    default: 'paid'
-  },
-  customerInfo: {
-    name: {
+  }, 
+  customerName: {
       type: String,
       trim: true,
       maxlength: [100, 'Customer name cannot exceed 100 characters']
-    },
-    phone: {
-      type: String,
-      trim: true,
-      match: [/^[6-9]\d{9}$/, 'Please enter valid phone number']
-    }
-  },
-  creditAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Credit amount cannot be negative']
-  },
-  notes: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Notes cannot exceed 500 characters']
   },
   soldBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'User reference is required']
+    required: true
   },
-  saleDate: {
-    type: Date,
-    default: Date.now
-  }
+  status: {
+    type: String,
+    enum: ['completed', 'cancelled'],
+    default: 'completed'
+  },
 }, {
   timestamps: true
 });
@@ -103,8 +76,6 @@ const saleSchema = new mongoose.Schema({
 // Indexes for better query performance
 saleSchema.index({ saleDate: -1 });
 saleSchema.index({ paymentMethod: 1 });
-saleSchema.index({ soldBy: 1 });
-
 
 // Auto-generate sale number
 saleSchema.pre('save', async function(next) {  // TODO : ATOMIC COUNTER 
@@ -136,58 +107,4 @@ saleSchema.pre('save', async function(next) {  // TODO : ATOMIC COUNTER
     }
 });
 
-// Pre-save validation
-saleSchema.pre('save', function(next) {
-  // If payment method is credit, status should be pending
-  if (this.paymentMethod === 'credit' && this.paymentStatus === 'paid') {
-    return next(new Error('Credit sales cannot be marked as paid'));
-  }
-  // creditAmount should not exceed totalAmount
-  if (this.creditAmount > this.totalAmount) {
-    return next(new Error('Credit amount cannot exceed total amount'));
-  }
-   // If creditAmount > 0, status cannot be 'paid'
-   if (this.creditAmount > 0 && this.paymentStatus === 'paid') {
-    return next(new Error('Sale with credit amount cannot be fully paid'));
-  }
-  next();
-});
-
-// Should validate item calculations
-saleItemSchema.pre('save', function(next) {
-  const expectedSubtotal = this.quantity * this.unitPrice;
-  if (Math.abs(this.subtotal - expectedSubtotal) > 0.01) {  // Float precision
-    return next(new Error('Item subtotal mismatch'));
-  }
-  next();
-});
-
-// Should validate sale calculations
-saleSchema.pre('save', function(next) {
-  const calculatedSubtotal = this.items.reduce((sum, item) => sum + item.subtotal, 0);
-  if (Math.abs(this.subtotal - calculatedSubtotal) > 0.01) {
-    return next(new Error('Sale subtotal mismatch'));
-  }
-  
-  const expectedTotal = this.subtotal + this.tax - this.discount;
-  if (Math.abs(this.totalAmount - expectedTotal) > 0.01) {
-    return next(new Error('Total amount mismatch'));
-  }
-  
-  next();
-});
-
-// Virtual for profit calculation
-saleSchema.virtual('totalProfit').get(function() {
-  // This would require product cost prices to calculate accurately
-  // For now, return 0 - implement after integrating with product data
-  return 0;
-});
-
 module.exports = mongoose.model('Sale', saleSchema);
-
-// Future (separate Customer collection): When to migrate:
-// Track customer purchase history
-// Credit limits per customer
-// Loyalty programs
-// Customer analytics
