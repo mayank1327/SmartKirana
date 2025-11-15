@@ -16,9 +16,14 @@ async updateStock(productId, quantity, movementType, reason, userId, reference =
     let newStock;
 
     // Calculate new stock based on movement type
+    if (!['IN', 'OUT', 'ADJUSTMENT'].includes(movementType)) {
+      throw new Error('Invalid stock movement type');
+    }
+    
     if (movementType === 'IN') {
       newStock = previousStock + quantity;
-    } else if (movementType === 'OUT') {
+    } 
+    else if (movementType === 'OUT') {
       newStock = previousStock - quantity;
       
       // Prevent negative stock
@@ -28,7 +33,7 @@ async updateStock(productId, quantity, movementType, reason, userId, reference =
         throw error;
       }
     } else if (movementType === 'ADJUSTMENT') {
-      if (quantity < 0) {
+      if (quantity <= 0) {
         throw new Error('Adjustment quantity cannot be negative');
       }
       newStock = quantity; // Direct stock adjustment
@@ -36,7 +41,6 @@ async updateStock(productId, quantity, movementType, reason, userId, reference =
 
     // Update product stock
     product.currentStock = newStock;
-    product.isLowStock = newStock <= product.minStockLevel;
     await productRepository.save(product, activeSession);
 
     // Create stock movement record
@@ -80,12 +84,12 @@ async updateStock(productId, quantity, movementType, reason, userId, reference =
     return this.updateStock(productId, quantity, 'IN', reason, userId, reference, notes, session);
   }
 
-  // Reduce stock (sale/damage)
+  // Reduce stock (sale)
   async reduceStock(productId, quantity, reason, userId, reference = '', notes = '', session = null) {
-    return this.updateStock(productId, quantity, 'OUT', reason, userId, reference, notes, session);
+       return this.updateStock(productId, quantity, 'OUT', reason, userId, reference, notes, session);
   }
 
-  // Adjust stock (correction)
+  // Adjust stock (correction / damage/ expiry)
   async adjustStock(productId, newQuantity, reason, userId, notes = '') {
     return this.updateStock(productId, newQuantity, 'ADJUSTMENT', reason, userId, 'Stock Adjustment', notes);
   }
