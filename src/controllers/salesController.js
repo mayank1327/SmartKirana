@@ -4,9 +4,11 @@ const salesService = require('../services/salesService');
 const createSale = async (req, res, next) => {
   try {
     const saleData = req.body;
-    const userId = req.user._id;
+    console.log(saleData);
+    saleData.soldBy = req.user._id;
+    console.log(saleData.soldBy);
 
-    const sale = await salesService.createSale(saleData, userId);
+    const sale = await salesService.createSale(saleData);
 
     res.status(201).json({
       success: true,
@@ -37,8 +39,8 @@ const getSales = async (req, res, next) => {
 // Get single sale
 const getSale = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const sale = await salesService.getSaleById(id);
+    const { saleId } = req.params;
+    const sale = await salesService.getSaleById(saleId);
 
     res.status(200).json({
       success: true,
@@ -54,7 +56,6 @@ const getDailySales = async (req, res, next) => {
   try {
     const { date } = req.query;
     const targetDate = date ? new Date(date) : new Date();
-    
     const summary = await salesService.getDailySales(targetDate);
 
     res.status(200).json({
@@ -63,6 +64,7 @@ const getDailySales = async (req, res, next) => {
       data: summary
     });
   } catch (error) {
+    error.status = 400; // Bad Request
     next(error);
   }
 };
@@ -70,7 +72,7 @@ const getDailySales = async (req, res, next) => {
 // Get sales analytics
 const getSalesAnalytics = async (req, res, next) => {
   try {
-    const { days = 7 } = req.query;
+    const days = req.query.days;
     const analytics = await salesService.getSalesAnalytics(parseInt(days));
 
     res.status(200).json({
@@ -84,7 +86,7 @@ const getSalesAnalytics = async (req, res, next) => {
 };
 
 // Get today's sales (quick access)
-const getTodaysSales = async (req, res, next) => {
+const getTodaySales = async (req, res, next) => {
   try {
     const today = new Date();
     const summary = await salesService.getDailySales(today);
@@ -113,5 +115,5 @@ module.exports = {
   getSale,
   getDailySales,
   getSalesAnalytics,
-  getTodaysSales
+  getTodaySales
 };
