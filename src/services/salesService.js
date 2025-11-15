@@ -5,11 +5,11 @@ const productRepository = require('../repositories/productRepository');
 
 class SalesService {
   // Create new sale with automatic stock deduction
-  async createSale(saleData, userId) {
+  async createSale(saleData) {
     const session = await mongoose.startSession();
     return await session.withTransaction(async () => {
 
-    const { items, customerInfo, paymentMethod, tax = 0, discount = 0, creditAmount = 0, notes = '' } = saleData;
+    const { items, customerName, paymentMethod, soldBy } = saleData;
     
     if (!items || items.length === 0) {
       throw new Error('Sale must contain at least one item');
@@ -35,7 +35,7 @@ class SalesService {
       console.log(item.quantity, product.currentStock);
       if (product.currentStock < item.quantity) {
         
-        const error = new Error(`Insufficient stock for ${product.name}. Available: ${product.currentStock}, Required: ${item.quantity}`);
+        const error = new Error(`Insufficient stock`);
         error.status = 400;
         throw error;
       }
@@ -44,51 +44,26 @@ class SalesService {
      // Prepare sale items with totals
      const saleItems = items.map(item => {
       const product = productMap.get(item.productId);
-      const itemSubtotal = item.quantity * product.sellingPrice;
+      const itemLineTotal = item.quantity * item.unitPrice;
       return {
         product: product._id,
         productName: product.name,
+        unit: product.unit,
         quantity: item.quantity,
-        unitPrice: product.sellingPrice,
-        subtotal: itemSubtotal
+        unitPrice: item.unitPrice,
+        lineTotal: itemLineTotal
       };
     });
-    // Calculate subtotal for the sale 
-    const subtotal = saleItems.reduce((sum, item) => sum + item.subtotal, 0);
 
+    const totalAmount = saleItems.reduce((sum, i) => sum + i.lineTotal, 0);
 
-    // Validate tax, discount, and creditAmount
-    if (tax < 0 || tax > 100) {
-      throw new Error('Tax percentage must be between 0 and 100');
-    }
-    
-    if (discount < 0 || discount > subtotal) {
-      throw new Error('Discount cannot exceed subtotal');
-    }
-  
-     // Calculate final amounts
-     const taxAmount = (subtotal * tax) / 100;
-     const totalAmount = subtotal + taxAmount - discount;
-
-     if (creditAmount < 0 || creditAmount > totalAmount) {
-      throw new Error('Credit amount cannot exceed total amount');
-    }
- 
-   
-    
     // Create sale record
     const sale = await salesRepository.createSale({
       items: saleItems,
-      subtotal,
-      tax: taxAmount,
-      discount,
       totalAmount,
       paymentMethod,
-      paymentStatus: creditAmount > 0 ? 'partial' : 'paid',
-      customerInfo,
-      creditAmount,
-      notes,
-      soldBy: userId
+      customerName,
+      soldBy
     }, session);
 
     // Reduce stock for each item using inventory service
@@ -97,18 +72,17 @@ class SalesService {
         item.productId,
         item.quantity,
         'sale',
-        userId,
+        soldBy,
         sale.saleNumber,
-        `Sale to ${customerInfo?.name || 'Customer'}`,
+        `Sale to ${customerName || 'Customer'}`,
         session
       );
     }
 
     // Populate the sale with product details
-    const populatedSale = await salesRepository.findSaleById(sale._id, [
-      {path : 'items.product', select : 'name category'},
-      {path : 'soldBy', select : 'name email'}
-    ], session);
+    const populatedSale = await salesRepository.findSaleById(sale._id,
+      {path : 'items.product', select : 'name'}, 
+      session);
 
     return populatedSale;
   }).finally(() => session.endSession());
@@ -120,24 +94,31 @@ class SalesService {
       startDate, 
       endDate, 
       paymentMethod, 
-      paymentStatus, 
       soldBy,
       page = 1, 
       limit = 20 
     } = query;
     
     let filter = {};
-    
     // Date range filter
-    if (startDate || endDate) {
-      filter.saleDate = {};
-      if (startDate) filter.saleDate.$gte = new Date(startDate);
-      if (endDate) filter.saleDate.$lte = new Date(endDate);
+  if (startDate || endDate) {
+    filter.saleDate = {};
+    if (startDate) {
+      // ✅ Set to start of day (00:00:00.000)
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      filter.saleDate.$gte = start;
     }
+    if (endDate) {
+      // ✅ Set to end of day (23:59:59.999)
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      filter.saleDate.$lte = end;
+    }
+  }
     
     // Other filters
     if (paymentMethod) filter.paymentMethod = paymentMethod;
-    if (paymentStatus) filter.paymentStatus = paymentStatus;
     if (soldBy) filter.soldBy = soldBy;
     
     const skip = (page - 1) * limit;
@@ -163,8 +144,9 @@ class SalesService {
 
   // Get single sale by ID
   async getSaleById(saleId) {
+    console.log('Fetching sale with ID:', saleId); // ✅ Debug log
     const sale = await salesRepository.findSaleById(saleId, [
-      {path : 'items.product', select : 'name category costPrice'},
+      {path : 'items.product', select : 'name costPrice'},
       {path : 'soldBy', select : 'name email'}
     ]);
 
@@ -197,16 +179,9 @@ class SalesService {
           _id: null,
           totalSales: { $sum: 1 },
           totalAmount: { $sum: '$totalAmount' },
-          totalDiscount: { $sum: '$discount' },
-          totalCreditAmount: { $sum: '$creditAmount' },
           cashSales: {
             $sum: {
               $cond: [{ $eq: ['$paymentMethod', 'cash'] }, '$totalAmount', 0]
-            }
-          },
-          cardSales: {
-            $sum: {
-              $cond: [{ $eq: ['$paymentMethod', 'card'] }, '$totalAmount', 0]
             }
           },
           upiSales: {
@@ -226,10 +201,7 @@ class SalesService {
     return dailySales[0] || {
       totalSales: 0,
       totalAmount: 0,
-      totalDiscount: 0,
-      totalCreditAmount: 0,
       cashSales: 0,
-      cardSales: 0,
       upiSales: 0,
       creditSales: 0
     };
@@ -253,7 +225,6 @@ class SalesService {
           },
           dailySales: { $sum: 1 },
           dailyAmount: { $sum: '$totalAmount' },
-          dailyDiscount: { $sum: '$discount' }
         }
       },
       {
@@ -267,9 +238,4 @@ class SalesService {
 
 module.exports = new SalesService();
 
-// Optimizations Needed:
 
-// Batch product fetching - One query instead of N
-// Payment status logic - Handle full credit case
-// Validation - Tax/discount/credit amount ranges
-// Error messages - More specific (which item failed)
