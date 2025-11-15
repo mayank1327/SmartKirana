@@ -1,6 +1,8 @@
 // Generic validation middleware
 const validate = (schema, property = 'body') => (req, res, next) => {
-    const { error, value } = schema.validate(req[property], { abortEarly: false });
+    const { error, value } = schema.validate(req[property], { 
+      abortEarly: false ,
+    });
   
     if (error) {
       // Return all errors in one response
