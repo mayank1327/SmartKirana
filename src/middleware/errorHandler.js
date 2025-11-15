@@ -46,7 +46,7 @@ const errorHandler = (err, req, res, next) => {
   
 
   // Bad Request Error (for client-side invalid input)
-  if (err.statusCode === 400) {
+  if (err.status === 400) {
     return res.status(400).json({
       success: false,
       error: err.message || 'Bad request'
