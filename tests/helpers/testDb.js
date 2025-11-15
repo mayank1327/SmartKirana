@@ -20,15 +20,12 @@ async function createTestSale(userId, productId, overrides = {}) {
   return Sale.create({
     items: [{
       product: productId,
-      productName: 'Test Milk',
       quantity: 2,
       unitPrice: 60,
-      subtotal: 120
+      lineTotal: 120
     }],
-    subtotal: 120,
     totalAmount: 120,
     paymentMethod: 'cash',
-    paymentStatus: 'paid',
     soldBy: userId,
     ...overrides
   });
