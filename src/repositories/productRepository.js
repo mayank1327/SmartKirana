@@ -27,6 +27,21 @@ async findOne(filter, session = null) {
     : Product.findOne(filter);
 }
 
+ // Find many products without pagination (for bulk operations) (related with sales);
+ async findMany(filter = {}, session = null) {
+  return session 
+    ? Product.find(filter).session(session) 
+    : Product.find(filter);
+}
+
+ // Find product by ID (inventory Service);
+ async findById(id, session = null) {
+  return session
+    ? Product.findById(id).session(session)
+    : Product.findById(id);
+}
+
+
 // Create new product
 async create(productData) {
   return Product.create(productData);
