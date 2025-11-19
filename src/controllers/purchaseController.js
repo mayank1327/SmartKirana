@@ -50,38 +50,6 @@ const getPurchase = async (req, res, next) => {
   }
 };
 
-// Update payment status
-const updatePaymentStatus = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const paymentData = req.body;
-
-    const purchase = await purchaseService.updatePaymentStatus(id, paymentData);
-
-    res.status(200).json({
-      success: true,
-      message: 'Payment status updated successfully',
-      data: purchase
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get pending payments
-const getPendingPayments = async (req, res, next) => {
-  try {
-    const summary = await purchaseService.getPendingPayments();
-
-    res.status(200).json({
-      success: true,
-      data: summary
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 // Get supplier summary
 const getSupplierSummary = async (req, res, next) => {
   try {
@@ -133,8 +101,6 @@ module.exports = {
   createPurchase,
   getPurchases,
   getPurchase,
-  updatePaymentStatus,
-  getPendingPayments,
   getSupplierSummary,
   getPurchaseAnalytics,
   getTodaysPurchases
