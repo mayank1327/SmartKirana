@@ -20,7 +20,6 @@ router.use(protect);
 
 // Quick access routes (before parameterized routes)
 router.get('/today', getTodaysPurchases);
-router.get('/pending-payments', getPendingPayments);
 router.get('/supplier-summary', getSupplierSummary);
 router.get('/analytics', getPurchaseAnalytics);
 
@@ -29,10 +28,7 @@ router.route('/')
   .get(validate(purchaseValidator.getPurchasesQuerySchema, 'query'),getPurchases)
   .post(validate(purchaseValidator.createPurchaseSchema), createPurchase);
 
-router.route('/:id')
-  .get(getPurchase);
+router.route('/:id').get(getPurchase);
 
-// Payment management
-router.put('/:id/payment', validate(purchaseValidator.updatePaymentSchema),updatePaymentStatus);
 
 module.exports = router;
