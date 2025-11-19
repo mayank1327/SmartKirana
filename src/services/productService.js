@@ -70,7 +70,7 @@ class ProductService {
     }
   }
   // Create new product
-  async createProduct(productData) {
+  async createProduct(productData, session = null) {
   
     const { name } = productData;
     // Check if product with same name exists
@@ -88,7 +88,7 @@ class ProductService {
       throw error;
     }
     
-    const product = await productRepository.create(productData);
+    const product = await productRepository.create(productData, session);
 
     return product;
   }
