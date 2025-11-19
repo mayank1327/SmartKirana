@@ -10,6 +10,10 @@ const purchaseItemSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Product name is required']
   },
+  unit: { 
+    type: String, 
+    required: true 
+  },  
   quantity: {
     type: Number,
     required: [true, 'Quantity is required'],
@@ -20,34 +24,15 @@ const purchaseItemSchema = new mongoose.Schema({
     required: [true, 'Unit cost is required'],
     min: [0, 'Unit cost cannot be negative']
   },
-  subtotal: {
+  minSellingPrice: {
+    type: Number,
+    required: true,
+    min: [0, 'Minimum selling price cannot be negative']
+  },
+  lineTotal: {
     type: Number,
     required: [true, 'Subtotal is required'],
     min: [0, 'Subtotal cannot be negative']
-  }
-});
-
-const supplierSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Supplier name is required'],
-    trim: true,
-    maxlength: [100, 'Supplier name cannot exceed 100 characters']
-  },
-  contactPerson: {
-    type: String,
-    trim: true,
-    maxlength: [100, 'Contact person name cannot exceed 100 characters']
-  },
-  phone: {
-    type: String,
-    trim: true,
-    match: [/^[6-9]\d{9}$/, 'Please enter valid phone number']
-  },
-  address: {
-    type: String,
-    trim: true,
-    maxlength: [300, 'Address cannot exceed 300 characters']
   }
 });
 
@@ -55,52 +40,26 @@ const purchaseSchema = new mongoose.Schema({
   purchaseNumber: {
     type: String,
     unique: true,
-    // required: [true, 'Purchase number is required']
   },
-  supplier: supplierSchema,
+  purchaseDate: {
+    type: Date,
+    default: Date.now
+  },
+  supplierName: {
+    type: String,
+    trim: true,
+    maxlength: 100
+  },
   items: [purchaseItemSchema],
-  subtotal: {
-    type: Number,
-    required: [true, 'Subtotal is required'],
-    min: [0, 'Subtotal cannot be negative']
-  },
-  tax: {
-    type: Number,
-    default: 0,
-    min: [0, 'Tax cannot be negative']
-  },
-  discount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Discount cannot be negative']
-  },
   totalAmount: {
     type: Number,
     required: [true, 'Total amount is required'],
     min: [0, 'Total amount cannot be negative']
   },
-  paymentStatus: {
+  paymentMode: {
     type: String,
-    enum: ['pending', 'partial', 'paid'],
-    default: 'pending'
-  },
-  paidAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Paid amount cannot be negative']
-  },
-  paymentDueDate: {
-    type: Date
-  },
-  deliveryStatus: {
-    type: String,
-    enum: ['pending', 'partial', 'delivered'],
-    default: 'delivered'
-  },
-  invoiceNumber: {
-    type: String,
-    trim: true,
-    maxlength: [100, 'Invoice number cannot exceed 100 characters']
+    enum: ['cash', 'credit', 'UPI', 'cheque'],
+    default: 'cash'
   },
   notes: {
     type: String,
@@ -112,10 +71,6 @@ const purchaseSchema = new mongoose.Schema({
     ref: 'User',
     required: [true, 'User reference is required']
   },
-  purchaseDate: {
-    type: Date,
-    default: Date.now
-  }
 }, {
   timestamps: true
 });
@@ -123,8 +78,7 @@ const purchaseSchema = new mongoose.Schema({
 // Indexes for better query performance
 purchaseSchema.index({ purchaseDate: -1 });
 purchaseSchema.index({ paymentStatus: 1 });
-purchaseSchema.index({ 'supplier.name': 1 });
-
+purchaseSchema.index({ supplierName : 1 });
 
 // Auto-generate purchase number
 purchaseSchema.pre('save', async function(next) {
@@ -148,41 +102,5 @@ purchaseSchema.pre('save', async function(next) {
   next();
 });
 
-purchaseSchema.pre('save', function(next) {
-  // Paid amount can't exceed total
-  if (this.paidAmount > this.totalAmount) {
-    return next(new Error('Paid amount cannot exceed total amount'));
-  }
-  
-  // Update payment status based on paidAmount
-  if (this.paidAmount === 0) {
-    this.paymentStatus = 'pending';
-  } else if (this.paidAmount === this.totalAmount) {
-    this.paymentStatus = 'paid';
-  } else {
-    this.paymentStatus = 'partial';
-  }
-  
-  next();
-});
-
-purchaseItemSchema.pre('save', function(next) {
-  const expectedSubtotal = this.quantity * this.unitCost;
-  if (Math.abs(this.subtotal - expectedSubtotal) > 0.01) {
-    return next(new Error('Item subtotal mismatch'));
-  }
-  next();
-});
-// Virtual for remaining payment amount
-purchaseSchema.virtual('remainingAmount').get(function() {
-  return this.totalAmount - this.paidAmount;
-});
-
-// Virtual for payment completion percentage
-purchaseSchema.virtual('paymentPercentage').get(function() {
-  return this.totalAmount > 0 ? (this.paidAmount / this.totalAmount) * 100 : 0;
-});
-
 module.exports = mongoose.model('Purchase', purchaseSchema);
 
-// Minor enhancements (supplier reference, delivery tracking, validation hooks) can be added during refinement.
