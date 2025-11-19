@@ -2,40 +2,28 @@ const mongoose = require('mongoose');
 const inventoryService = require('./inventoryService');
 const purchaseRepository = require('../repositories/purchaseRepository'); // Add this
 const productRepository = require('../repositories/productRepository');
-
+const productService = require('./productService');
 class PurchaseService {
   // Create new purchase with automatic stock addition
   async createPurchase(purchaseData, userId) {
   const session = await mongoose.startSession();
     return await session.withTransaction(async () => {
-    const { 
-      supplier, 
-      items, 
-      tax = 0, 
-      discount = 0, 
-      paymentDueDate,
-      invoiceNumber,
-      notes = '' 
-    } = purchaseData;
+    const { supplierName, items, notes = '' } = purchaseData;
     
     if (!items || items.length === 0) {
       throw new Error('Purchase must contain at least one item');
     }
 
-    if (!supplier || !supplier.name) {
-      throw new Error('Supplier information is required');
-    }
 
     // Validate and prepare purchase items
     const purchaseItems = [];
-    let subtotal = 0;
+    let lineTotal = 0;
 
     // Fetch all products once
-    const productIds = items.map(item => item.productId);
+    let productIds = items.map(item => item.productId);
 
-    
     const products = await productRepository.findMany(
-         { _id: { $in: productIds }, isActive: true },
+         { _id: { $in: productIds } },
          session
     );
 
@@ -44,64 +32,96 @@ class PurchaseService {
 
     for (const item of items) {
 
-      const product = productMap.get(item.productId);
+      let product = productMap.get(item.productId.toString());
 
-      if (!product || !product.isActive) {
-        const error = new Error(`Product not found: ${item.productId}`);
-        error.status = 400;
-        throw error;
-      }
+      // If product does not exist → auto-create it
+      if (!product) {
+         product = await productService.createProduct({
+           name: item.productName,
+           unit: item.unit,
+           costPrice: item.unitCost,
+           minSellingPrice: item.minSellingPrice,
+           currentStock: 0,
+           minStockLevel: 10,
+           isActive: true
+      }, session);
+
+      console.log(product.name);
+      console.log(product._id);
+      // Add to map so next time loop doesn't search again
+       productMap.set(product._id.toString(), product);
+    }
+
+    else if (!product.isActive) {
+      // ✅ Product exists but inactive → reactivate it
+      await productRepository.updateById(product._id, {
+        isActive: true,
+        costPrice: item.unitCost,
+        minSellingPrice: item.minSellingPrice
+      }, session);
+      
+      // Update the product object in memory
+      product.isActive = true;
+      product.costPrice = item.unitCost;
+      product.minSellingPrice = item.minSellingPrice;
+    }
+
+
+    // ✅ Validate quantity
+    if (!item.quantity || item.quantity <= 0) {
+      throw new Error(`Valid quantity required for ${product.name}`);
+    }
+
 
       if (!item.unitCost || item.unitCost <= 0) {
         throw new Error(`Valid unit cost required for ${product.name}`);
       }
 
-      const itemSubtotal = item.quantity * item.unitCost;
-      
+      const itemlineTotal = item.quantity * item.unitCost;
+       
       purchaseItems.push({
         product: product._id,
         productName: product.name,
+        unit: product.unit,
         quantity: item.quantity,
         unitCost: item.unitCost,
-        subtotal: itemSubtotal
+        minSellingPrice: item.minSellingPrice, 
+        lineTotal: itemlineTotal
       });
       
-      subtotal += itemSubtotal;
+      lineTotal += itemlineTotal;
     }
 
-    // Calculate final amounts
-    const taxAmount = (subtotal * tax) / 100;
-    const totalAmount = subtotal + taxAmount - discount;
+   
+    const totalAmount = lineTotal;
 
     // Create purchase record
     const purchase = await purchaseRepository.createPurchase({
-      supplier,
+      supplierName,
       items: purchaseItems,
-      subtotal,
-      tax: taxAmount,
-      discount,
       totalAmount,
-      paymentDueDate: paymentDueDate ? new Date(paymentDueDate) : null,
-      invoiceNumber,
+      paymentMode: purchaseData.paymentMode || 'cash',
       notes,
-      purchasedBy: userId
+      purchasedBy: userId,
     }, session);
 
+     
     // Add stock for each item using inventory service
-    for (const item of items) {
+    for (const item of purchaseItems) {
       await inventoryService.addStock(
-        item.productId,
+        item.product,
         item.quantity,
         'purchase',
         userId,
         purchase.purchaseNumber,
-        `Purchase from ${supplier.name}`,
+        `Purchase from ${supplierName}`,
         session
       );
 
       // Update product cost price with latest purchase price
-      await productRepository.updateById(item.productId, {
-        costPrice: item.unitCost
+      await productRepository.updateById(item.product, {
+        costPrice: item.unitCost,
+        minSellingPrice: item.minSellingPrice
       }, session);
     }
 
@@ -113,17 +133,15 @@ class PurchaseService {
      
     return populatedPurchase;
   }).finally(() => session.endSession());
-} 
-
-  
+  } 
   // Get all purchases with filtering
   async getPurchases(query = {}) {
     const { 
       startDate, 
-      endDate, 
-      paymentStatus, 
-      deliveryStatus,
-      supplier,
+      endDate,
+      productName,
+      paymentMode,
+      supplierName,
       page = 1, 
       limit = 20 
     } = query;
@@ -138,9 +156,10 @@ class PurchaseService {
     }
     
     // Other filters
-    if (paymentStatus) filter.paymentStatus = paymentStatus;
-    if (deliveryStatus) filter.deliveryStatus = deliveryStatus;
-    if (supplier) filter['supplier.name'] = new RegExp(supplier, 'i');
+    if (paymentMode) filter.paymentMode = paymentMode;
+    if (supplierName) filter['supplierName'] = new RegExp(supplierName, 'i');
+
+    if (productName) filter['items.productName'] = new RegExp(productName, 'i');
     
     const skip = (page - 1) * limit;
     
@@ -166,7 +185,7 @@ class PurchaseService {
   // Get single purchase by ID
   async getPurchaseById(purchaseId) {
     const purchase = await purchaseRepository.findById(purchaseId, [
-      { path: 'items.product', select: 'name category sellingPrice' },
+      { path: 'items.product', select: 'name sellingPrice' },
       { path: 'purchasedBy', select: 'name email' }
     ])
       
@@ -180,84 +199,6 @@ class PurchaseService {
     return purchase;
   }
 
-  // Update payment status // here we also adding transaction session 
-  async updatePaymentStatus(purchaseId, paymentData, session = null) {
-    const { paidAmount, paymentStatus, notes } = paymentData;
-
-    const ownSession = !session;
-    session = session || await mongoose.startSession();
-    
-    try {
-    return await session.withTransaction(async () => {
-    const purchase = await purchaseRepository.findById(purchaseId, [], session);
-    if (!purchase) {
-      const error =  new Error('Purchase not found');
-      error.status = 404;
-      throw error;
-    }
-
-    // Validate payment amount
-    if (paidAmount < 0 || paidAmount > purchase.totalAmount) {
-      const error = new Error('Invalid payment amount');
-      error.status = 400;
-      throw error;
-    }
-
-    // Update payment details
-    purchase.paidAmount = paidAmount;
-    purchase.paymentStatus = paymentStatus || (
-      paidAmount === 0 ? 'pending' :
-      paidAmount < purchase.totalAmount ? 'partial' : 'paid'
-    );
-    
-    if (notes) purchase.notes = notes;
-    
-    await purchaseRepository.save(purchase, session);
-    return purchase;
-  });
-    } finally {
-      if (ownSession) session.endSession();
-    }
-  }
-
-  // Get pending payments summary
-  async getPendingPayments() {
-    const pendingPurchases = await purchaseRepository.findPurchases(
-      { paymentStatus: { $in: ['pending', 'partial'] } },
-      {
-       select : 'purchaseNumber supplier totalAmount paidAmount paymentDueDate purchaseDate',
-       sort : { paymentDueDate: 1, purchaseDate: -1 }
-      }
-    )
-    
-
-    const summary = {
-      totalPendingAmount: 0,
-      overduePurchases: [],
-      dueSoonPurchases: [],
-      totalPurchases: pendingPurchases.length
-    };
-
-    const today = new Date();
-    const nextWeek = new Date();
-    nextWeek.setDate(today.getDate() + 7);
-
-    pendingPurchases.forEach(purchase => {
-      const remainingAmount = purchase.totalAmount - purchase.paidAmount;
-      summary.totalPendingAmount += remainingAmount;
-
-      if (purchase.paymentDueDate) {
-        if (purchase.paymentDueDate < today) {
-          summary.overduePurchases.push(purchase);
-        } else if (purchase.paymentDueDate <= nextWeek) {
-          summary.dueSoonPurchases.push(purchase);
-        }
-      }
-    });
-
-    return summary;
-  }
-
   // Get supplier summary
   async getSupplierSummary() {
     const supplierStats = await purchaseRepository.aggregate([
@@ -266,15 +207,6 @@ class PurchaseService {
           _id: '$supplier.name',
           totalPurchases: { $sum: 1 },
           totalAmount: { $sum: '$totalAmount' },
-          pendingAmount: {
-            $sum: {
-              $cond: [
-                { $in: ['$paymentStatus', ['pending', 'partial']] },
-                { $subtract: ['$totalAmount', '$paidAmount'] },
-                0
-              ]
-            }
-          },
           lastPurchaseDate: { $max: '$purchaseDate' },
           supplierInfo: { $first: '$supplier' }
         }
