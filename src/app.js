@@ -1,5 +1,3 @@
-// Main application file (V in MVC - API responses)
-
 const express = require('express');
 const cors = require('cors');      // cors → Security (allow cross-origin requests). cors → Accessibility (allow frontend & backend to communicate safely).
 const helmet = require('helmet'); // helmet → Security (protect your backend from common attacks).
@@ -17,6 +15,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Routes
+
 // auth routes
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
@@ -26,7 +25,7 @@ const productRoutes = require('./routes/productRoutes');
 app.use('/api/products', productRoutes);
 
 
-// invventory routes
+// inventory routes
 const inventoryRoutes = require('./routes/inventoryRoutes');
 app.use('/api/inventory', inventoryRoutes);
 
@@ -64,13 +63,13 @@ app.get('/api/test-protected', protect, authorize('owner'), (req, res) => {
 });
 
 
-// Use middleware
-const errorHandler = require('./middleware/errorHandler');
-app.use(errorHandler);
-
 const notFound = require('./middleware/notFound');
 app.use(notFound);
 
+
+// Use middleware
+const errorHandler = require('./middleware/errorHandler');
+app.use(errorHandler);
 
 
 module.exports = app;
