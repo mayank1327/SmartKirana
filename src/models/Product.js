@@ -1,53 +1,119 @@
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
-  name: {
+  // 1. Product Name
+  productName: {
     type: String,
     required: [true, 'Product name is required'],
     trim: true,
     maxlength: [100, 'Product name cannot exceed 100 characters']
   },
-  unit: {
-    type: String,
-    required: [true, 'Unit is required'],
-    trim: true,
-    lowercase: true
-    // No enum - full flexibility
+
+  // 2. Base Unit (smallest selling unit)
+  baseUnit: {
+    unitId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    unitName: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true
+    }
   },
-  costPrice: { 
+
+  // 3. All Units
+  units: [{
+    unitId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    unitName: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true
+    },
+    isBaseUnit: {
+      type: Boolean,
+      default: false
+    }
+  }],
+
+  // 4. Variations (one per unit)
+  variations: [{
+    variationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    unitId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    variationName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    containsQuantity: {
+      type: Number,
+      required: true,
+      min: [1, 'Contains quantity must be at least 1']
+    },
+    containsUnitId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    conversionToBase: {
+      type: Number,
+      required: true,
+      min: [1, 'Conversion to base must be at least 1']
+    },
+    minSellingPrice: {
+      type: Number,
+      default: null,  // Optional during creation, required during first purchase
+      min: [0, 'MSP cannot be negative']
+    }
+  }],
+
+  // 5. Cost Price (ONLY base unit, from first purchase)
+  costPricePerBaseUnit: {
     type: Number,
-    required: [true, 'Cost price is required'],
-    min: [0, 'Cost price must be positive']
+    default: null,  // Set during first purchase
+    min: [0, 'Cost price cannot be negative']
   },
-  minSellingPrice: { 
-    type: Number,
-    required: [true, 'Minimum Selling price is required'],
-    min: [0, 'Minimum Selling price must be positive'],
-  },
+
+  // 6. Current Stock (ALWAYS in base unit)
   currentStock: {
     type: Number,
-    required: [true, 'Current stock is required'],
-    min: [0, 'Stock cannot be negative'],
-    default: 0
+    required: true,
+    default: 0,
+    min: [0, 'Stock cannot be negative']  // For MVP: no negative stock
   },
+
+  // 7. Minimum Stock Level (in base unit, optional at creation, required at first purchase)
   minStockLevel: {
     type: Number,
-    required: [true, 'Minimum stock level is required'],
-    min: [0, 'Minimum stock level must be positive'], // Future enhancement: Let owner set per-product thresholds (already possible!).
-    default: 10  
+    default: null,  // Can be null initially
+    min: [0, 'Minimum stock level cannot be negative']
   },
+
+  // 8. Active Status
   isActive: {
     type: Boolean,
     default: true
   },
+
+  // 9. User Ownership
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
+
 }, {
   timestamps: true
 });
 
-// Indexes for better search performance
-productSchema.index({ name: 'text'}); // Text index for search functionality
-productSchema.index({ isActive: 1 }); // Filter active/inactive products
-productSchema.index( { name: 1 },{ unique: true, partialFilterExpression: { isActive: true } }); // Ensure unique active product names (soft delete aware)
-
 module.exports = mongoose.model('Product', productSchema);
-// SKU = stock keeping unit 
