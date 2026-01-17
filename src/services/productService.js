@@ -5,11 +5,11 @@ class ProductService {
   // Get all products with search and filtering
   async getAllProducts(query = {}) {
 
-    const { search, lowstock, page = 1, limit = 10 } = query;
+    const { search, lowstock, page = 1, limit = 12 } = query;
     let filter = this.getActiveFilter();
     let sortOption = { createdAt: -1 }; // Todo : enhance sorting based on query params
     // Default projection → only essential fields for list view
-     let projection = {name: 1, currentStock: 1};
+     let projection = {name: 1,unit:1, currentStock: 1, minStockLevel:1, minSellingPrice:1, costPrice:1,  createdAt: 1 };
     // Search by name (text search)
     if (search) {
        filter.name = { $regex: search, $options: "i" };  // Case-insensitive partial match

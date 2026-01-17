@@ -33,6 +33,7 @@ const getProduct = async (req, res, next) => {
 // Create product
 const createProduct = async (req, res, next) => {
   try {
+    console.log(req.body);
     const product = await productService.createProduct(req.body);
     
     res.status(201).json({
@@ -74,27 +75,10 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
-// Get low stock products
-const getLowStockProducts = async (req, res, next) => {
-  try {
-    const products = await productService.getLowStockProducts();
-    
-    res.status(200).json({
-      success: true,
-      count: products.length,
-      data: products
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-
 module.exports = {
   getAllProducts,
   getProduct,
   createProduct,
   updateProduct,
-  deleteProduct,
-  getLowStockProducts
+  deleteProduct
 };

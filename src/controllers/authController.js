@@ -9,11 +9,12 @@ const register = async (req, res, next) => {
     const result = await authService.registerUser({ name, email, password, role });
 
     // // 3. Send HTTP response
-    res.status(201).json({
-      success: true,
-      email, // This is right to send email with register..
-      ...result
-    });
+      // Send proper user object
+      res.status(201).json({
+        success: true,
+        token : result.token,
+        user: result.data,
+      });
   } catch (error) {
     next(error); // 4. Pass error to middleware
   }
@@ -26,7 +27,8 @@ const login = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      ...result
+      token: result.token,
+      user: result.data,
     });
   } catch (error) {
     next(error);

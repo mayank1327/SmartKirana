@@ -47,17 +47,11 @@ class ReportService {
           _id: null,
           totalSales: { $sum: 1 },
           totalRevenue: { $sum: '$totalAmount' },
-          totalDiscount: { $sum: '$discount' },
           cashSales: {
             $sum: {
               $cond: [{ $eq: ['$paymentMethod', 'cash'] }, '$totalAmount', 0]
             }
           },
-          creditSales: {
-            $sum: {
-              $cond: [{ $eq: ['$paymentMethod', 'credit'] }, '$totalAmount', 0]
-            }
-          }
         }
       }
     ]);
@@ -351,6 +345,11 @@ class ReportService {
       : 0;
 
     return result;
+  }
+
+  // Centralized filter for active products
+  getActiveFilter(extra = {}) {
+    return { isActive: true, ...extra };
   }
 }
 

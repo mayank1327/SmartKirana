@@ -5,7 +5,6 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
-  getLowStockProducts
 } = require('../controllers/productController');
 const { protect } = require('../middleware/auth');
 
@@ -16,9 +15,6 @@ const {createProductSchema, updateProductSchema}  = require('../validators/produ
 
 // Protect all routes
 router.use(protect);
-
-// Low stock products (special route before /:id)
-router.get('/low-stock', getLowStockProducts);
 
 // CRUD routes
 router.route('/')

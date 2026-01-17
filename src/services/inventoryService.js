@@ -19,7 +19,6 @@ async updateStock(productId, quantity, movementType, reason, userId, reference =
     if (!['IN', 'OUT', 'ADJUSTMENT'].includes(movementType)) {
       throw new Error('Invalid stock movement type');
     }
-    
     if (movementType === 'IN') {
       newStock = previousStock + quantity;
     } 

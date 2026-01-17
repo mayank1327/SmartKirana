@@ -6,7 +6,7 @@ const createSale = async (req, res, next) => {
     const saleData = req.body;
     console.log(saleData);
     saleData.soldBy = req.user._id;
-    console.log(saleData.soldBy);
+    console.log(saleData.soldBy); 
 
     const sale = await salesService.createSale(saleData);
 

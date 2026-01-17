@@ -3,13 +3,15 @@ const Sale = require('../models/Sale');
 const Purchase = require('../models/Purchase');
 
 class ReportRepository {
-  // Products
-  async findActiveProducts(filter = {}, options = {}) {
-    const query = Product.find({ isActive: true, ...filter });
-    if (options.sort) query.sort(options.sort);
-    if (options.limit) query.limit(options.limit);
-    return query;
-  }
+      
+    findActiveProducts(filter = {}, options = {}) {
+      let query = Product.find({ isActive: true, ...filter });
+
+      if (options.sort) query = query.sort(options.sort);
+      if (options.limit) query = query.limit(options.limit);
+
+      return query; // returns Query (NOT promise)
+    }
 
   async aggregateProducts(pipeline = []) {
     return Product.aggregate(pipeline);
