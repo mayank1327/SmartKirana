@@ -3,7 +3,8 @@ const productService = require('../services/productService');
 // Get all products
 const getAllProducts = async (req, res, next) => {
   try {
-    const result = await productService.getAllProducts(req.query); 
+    const userId = req.user._id;
+    const result = await productService.getAllProducts(req.query, userId);
     
     res.status(200).json({
       success: true,
@@ -19,7 +20,10 @@ const getAllProducts = async (req, res, next) => {
 // Get single product
 const getProduct = async (req, res, next) => {
   try {
-    const product = await productService.getProductById(req.params.id);
+    const productId = req.params.id;
+    const userId = req.user._id;
+    
+    const product = await productService.getProductById(productId, userId);
     
     res.status(200).json({
       success: true,
@@ -33,8 +37,11 @@ const getProduct = async (req, res, next) => {
 // Create product
 const createProduct = async (req, res, next) => {
   try {
-    console.log(req.body);
-    const product = await productService.createProduct(req.body);
+    const productData = req.body;
+  
+    const userId = req.user._id;  // From auth middleware
+    
+    const product = await productService.createProduct(productData, userId);
     
     res.status(201).json({
       success: true,
@@ -45,7 +52,6 @@ const createProduct = async (req, res, next) => {
     next(error);
   }
 };
-
 // Update product
 const updateProduct = async (req, res, next) => {
   try {
