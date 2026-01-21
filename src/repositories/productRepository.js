@@ -41,7 +41,7 @@ async findOne(filter, session = null) {
     : Product.findById(id);
 }
 
-
+// Create new product
 async create(productData, session = null) {
   if (session) {
     return Product.create([productData], { session }).then(res => res[0]);
