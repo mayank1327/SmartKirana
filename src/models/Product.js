@@ -11,7 +11,7 @@ const productSchema = new mongoose.Schema({
 
   // 2. Base Unit (smallest selling unit)
   baseUnit: {
-    unitId: {
+    _id: {
       type: mongoose.Schema.Types.ObjectId,
       required: true
     },
@@ -25,7 +25,7 @@ const productSchema = new mongoose.Schema({
 
   // 3. All Units
   units: [{
-    unitId: {
+    _id: {
       type: mongoose.Schema.Types.ObjectId,
       required: true
     },
@@ -43,7 +43,7 @@ const productSchema = new mongoose.Schema({
 
   // 4. Variations (one per unit)
   variations: [{
-    variationId: {
+    _id: {
       type: mongoose.Schema.Types.ObjectId,
       required: true
     },
@@ -89,7 +89,7 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 0,
-    min: [0, 'Stock cannot be negative']  // For MVP: no negative stock
+    // min: [0, 'Stock cannot be negative']  // For MVP: no negative stock
   },
 
   // 7. Minimum Stock Level (in base unit, optional at creation, required at first purchase)
