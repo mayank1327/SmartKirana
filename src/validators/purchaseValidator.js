@@ -1,68 +1,97 @@
 const Joi = require('joi');
 
-// Common item schema
-const itemSchema = Joi.object({
-  productId: Joi.string().required().messages({
-    'any.required': 'Product ID is required',
-    'string.base': 'Product ID must be a string'
+// Purchase item schema
+const purchaseItemSchema = Joi.object({
+  productId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
+    'string.pattern.base': 'Product ID must be a valid ObjectId',
+    'any.required': 'Product ID is required'
   }),
-  productName: Joi.string().max(100).required().messages({
-    'any.required': 'Product name is required',
-    'string.base': 'Product name must be a string',
-    'string.max': 'Product name cannot exceed 100 characters'
+  variationId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
+    'string.pattern.base': 'Variation ID must be a valid ObjectId',
+    'any.required': 'Variation ID is required'
   }),
-  unit: Joi.string().max(50).required().messages({
-    'any.required': 'Unit is required',
-    'string.base': 'Unit must be a string',
-    'string.max': 'Unit cannot exceed 50 characters'
-  }),
-  quantity: Joi.number().integer().positive().required().messages({
-    'any.required': 'Quantity is required',
+  quantity: Joi.number().positive().required().messages({
     'number.base': 'Quantity must be a number',
-    'number.positive': 'Quantity must be greater than 0'
+    'number.positive': 'Quantity must be greater than 0',
+    'any.required': 'Quantity is required'
   }),
-  unitCost: Joi.number().positive().required().messages({
-    'any.required': 'Unit cost is required',
-    'number.base': 'Unit cost must be a number',
-    'number.positive': 'Unit cost must be greater than 0'
+  costPricePerUnit: Joi.number().min(0).required().messages({
+    'number.base': 'Cost price per unit must be a number',
+    'number.min': 'Cost price per unit cannot be negative',
+    'any.required': 'Cost price per unit is required'
+  })
+});
+
+// Cost price change schema (for MSP review)
+const costPriceChangeSchema = Joi.object({
+  productId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
+    'string.pattern.base': 'Product ID must be a valid ObjectId',
+    'any.required': 'Product ID is required'
   }),
-  minSellingPrice: Joi.number().positive().required().messages({
-    'any.required': 'Minimum selling price is required',
-    'number.base': 'Minimum selling price must be a number',
-    'number.positive': 'Minimum selling price must be greater than 0'
-  }),
-  
+  variations: Joi.array().items(
+    Joi.object({
+      variationId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
+        'string.pattern.base': 'Variation ID must be a valid ObjectId',
+        'any.required': 'Variation ID is required'
+      }),
+      newMinSellingPrice: Joi.number().min(0).required().messages({
+        'number.base': 'New minimum selling price must be a number',
+        'number.min': 'New minimum selling price cannot be negative',
+        'any.required': 'New minimum selling price is required'
+      })
+    })
+  ).min(1).required().messages({
+    'array.min': 'At least one variation MSP update is required'
+  })
 });
 
 // Create purchase validation
 const createPurchaseSchema = Joi.object({
- // OR if you want to require either a valid name or explicitly allow null
-  supplierName: Joi.string().trim().max(100).allow(null).optional(),
-  items: Joi.array().items(itemSchema).min(1).required()
-    .messages({ 'array.min': 'At least one purchase item is required' }),
-  paymentMode: Joi.string().valid('cash', 'credit', 'UPI', 'cheque').optional(),
-  notes: Joi.string().allow('').optional()
+  purchaseDate: Joi.date().iso().max('now').optional().messages({
+    'date.base': 'Purchase date must be a valid date',
+    'date.max': 'Purchase date cannot be in the future'
+  }),
+  supplierName: Joi.string().trim().max(100).allow('', null).optional().messages({
+    'string.max': 'Supplier name cannot exceed 100 characters'
+  }),
+  supplierBillNumber: Joi.string().trim().max(50).allow('', null).optional().messages({
+    'string.max': 'Supplier bill number cannot exceed 50 characters'
+  }),
+  notes: Joi.string().trim().max(500).allow('', null).optional().messages({
+    'string.max': 'Notes cannot exceed 500 characters'
+  }),
+  items: Joi.array().items(purchaseItemSchema).min(1).required().messages({
+    'array.min': 'At least one item is required',
+    'any.required': 'Items are required'
+  }),
+  costPriceChanges: Joi.array().items(costPriceChangeSchema).optional()
 });
 
-// Query validation schema for filters
+// Get purchases query validation
 const getPurchasesQuerySchema = Joi.object({
-  startDate: Joi.date().optional(),
-  endDate: Joi.date()
-    .optional()
-    .when('startDate', {
-      is: Joi.exist(),
-      then: Joi.date().min(Joi.ref('startDate')).messages({
-        'date.min': 'End date must be after start date'
-      })
-    }),
-  productName: Joi.string().optional(),
-  paymentMode: Joi.string().valid('cash', 'credit', 'UPI', 'cheque').optional(),
-  supplierName: Joi.string().optional(),
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20)
+  startDate: Joi.date().iso().optional().messages({
+    'date.base': 'Start date must be a valid date'
+  }),
+  endDate: Joi.date().iso().min(Joi.ref('startDate')).optional().messages({
+    'date.base': 'End date must be a valid date',
+    'date.min': 'End date must be after start date'
+  }),
+  supplierName: Joi.string().trim().optional(),
+  productName: Joi.string().trim().optional(),
+  page: Joi.number().integer().min(1).default(1).optional(),
+  limit: Joi.number().integer().min(1).max(100).default(20).optional()
+});
+
+// Purchase ID param validation
+const purchaseIdParamSchema = Joi.object({
+  purchaseId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
+    'string.pattern.base': 'Invalid purchase ID format',
+    'any.required': 'Purchase ID is required'
+  })
 });
 
 module.exports = {
   createPurchaseSchema,
-  getPurchasesQuerySchema
+  getPurchasesQuerySchema,
+  purchaseIdParamSchema
 };
