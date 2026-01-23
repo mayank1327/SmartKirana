@@ -24,16 +24,16 @@ app.use('/api/auth', authRoutes);
 const productRoutes = require('./routes/productRoutes');
 app.use('/api/products', productRoutes);
 
+// Bill routes (Phase 2)
+const billRoutes = require('./routes/billRoutes');
+app.use('/api/bills', billRoutes);
+
 
 // inventory routes
 const inventoryRoutes = require('./routes/inventoryRoutes');
 app.use('/api/inventory', inventoryRoutes);
 
-// sales routes
-const salesRoutes = require('./routes/salesRoutes');
-app.use('/api/sales', salesRoutes);
-
-// purchase routes
+// // Purchase routes (Phase 2)
 const purchaseRoutes = require('./routes/purchaseRoutes');
 app.use('/api/purchases', purchaseRoutes);
 
