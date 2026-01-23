@@ -3,15 +3,21 @@ const purchaseService = require('../services/purchaseService');
 // Create new purchase
 const createPurchase = async (req, res, next) => {
   try {
-    const purchaseData = req.body;
     const userId = req.user._id;
-
-    const purchase = await purchaseService.createPurchase(purchaseData, userId);
+    const result = await purchaseService.createPurchase(req.body, userId);
 
     res.status(201).json({
       success: true,
       message: 'Purchase created successfully',
-      data: purchase
+      data: {
+        purchaseId: result.purchase._id,
+        purchaseNumber: result.purchase.purchaseNumber,
+        totalAmount: result.purchase.totalAmount,
+        itemsCount: result.purchase.items.length,
+        stockUpdates: result.stockUpdates,
+        costPriceUpdated: result.costPriceUpdates.length > 0,
+        costPriceUpdates: result.costPriceUpdates
+      }
     });
   } catch (error) {
     next(error);
@@ -21,7 +27,8 @@ const createPurchase = async (req, res, next) => {
 // Get all purchases
 const getPurchases = async (req, res, next) => {
   try {
-    const result = await purchaseService.getPurchases(req.query);
+    const userId = req.user._id;
+    const result = await purchaseService.getPurchases(req.query, userId);
 
     res.status(200).json({
       success: true,
@@ -37,60 +44,28 @@ const getPurchases = async (req, res, next) => {
 // Get single purchase
 const getPurchase = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const purchase = await purchaseService.getPurchaseById(id);
+    const userId = req.user._id;
+    const { purchaseId } = req.params;
+    const purchase = await purchaseService.getPurchaseById(purchaseId, userId);
 
     res.status(200).json({
       success: true,
       data: purchase
     });
   } catch (error) {
-    
     next(error);
   }
 };
 
-// Get supplier summary
-const getSupplierSummary = async (req, res, next) => {
-  try {
-    const summary = await purchaseService.getSupplierSummary();
-
-    res.status(200).json({
-      success: true,
-      count: summary.length,
-      data: summary
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get purchase analytics
-const getPurchaseAnalytics = async (req, res, next) => {
-  try {
-    const { days = 30 } = req.query;
-    const analytics = await purchaseService.getPurchaseAnalytics(parseInt(days));
-
-    res.status(200).json({
-      success: true,
-      period: `${days} days`,
-      data: analytics
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get today's purchases (quick access)
+// Get today's purchases
 const getTodaysPurchases = async (req, res, next) => {
   try {
-    const result = await purchaseService.getTodaysPurchases();
+    const userId = req.user._id;
+    const result = await purchaseService.getTodaysPurchases(userId);
 
     res.status(200).json({
       success: true,
-      date: todayString,
-      summary,
-      purchases: result.purchases
+      data: result
     });
   } catch (error) {
     next(error);
@@ -101,7 +76,5 @@ module.exports = {
   createPurchase,
   getPurchases,
   getPurchase,
-  getSupplierSummary,
-  getPurchaseAnalytics,
   getTodaysPurchases
 };
