@@ -28,7 +28,6 @@ app.use('/api/products', productRoutes);
 const billRoutes = require('./routes/billRoutes');
 app.use('/api/bills', billRoutes);
 
-
 // inventory routes
 const inventoryRoutes = require('./routes/inventoryRoutes');
 app.use('/api/inventory', inventoryRoutes);
