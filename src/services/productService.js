@@ -211,6 +211,7 @@ class ProductService {
     }
 
     return conversionMap;
+
   }
 
   // Derive missing MSPs based on provided MSP and conversion chain
@@ -426,11 +427,11 @@ class ProductService {
       updatedAt: product.updatedAt
     };
   }
-
+ 
   // Create new product 
   async createProduct(productData, userId) {
     const { productName, units, variations, minStockLevel } = productData;
-
+  
     // ✅ Check for duplicate product name (case-insensitive)
     const existingProduct = await productRepository.findOne({
       productName: { $regex: new RegExp(`^${productName}$`, 'i') },
@@ -440,7 +441,7 @@ class ProductService {
 
     if (existingProduct) {
       const error = new Error('Product with this name already exists');
-      error.status = 400;
+      error.statusCode = 400;
       throw error;
     }
 
@@ -521,69 +522,71 @@ class ProductService {
       _id: product._id,
       productName: product.productName,
       currentStock: product.currentStock,
+      variations: product.variations,
+      minStockLevel: product.minStockLevel,
       stockDisplay: this.formatStockDisplay(product),
       message: 'Product created successfully'
     };
   }
 
-  // // Update product (edit allowed fields only)
-  // async updateProduct(productId, updateData, userId) {
-  //   // Get existing product
-  //   const product = await productRepository.findById(productId);
+  // Update product (edit allowed fields only)
+  async updateProduct(productId, updateData, userId) {
+    // Get existing product
+    const product = await productRepository.findById(productId);
 
-  //   if (!product) {
-  //     const error = new Error('Product not found');
-  //     error.status = 404;
-  //     throw error;
-  //   }
+    if (!product) {
+      const error = new Error('Product not found');
+      error.status = 404;
+      throw error;
+    }
 
-  //   // ✅ SECURITY: Check ownership
-  //   if (product.userId.toString() !== userId.toString()) {
-  //     const error = new Error('Unauthorized access to this product');
-  //     error.status = 403;
-  //     throw error;
-  //   }
+    // ✅ SECURITY: Check ownership
+    if (product.userId.toString() !== userId.toString()) {
+      const error = new Error('Unauthorized access to this product');
+      error.status = 403;
+      throw error;
+    }
 
-  //   if (!product.isActive) {
-  //     const error = new Error('Product not found');
-  //     error.status = 404;
-  //     throw error;
-  //   }
+    if (!product.isActive) {
+      const error = new Error('Product not found');
+      error.status = 404;
+      throw error;
+    }
 
-  //   // ✅ Allowed editable fields (per Phase 2 doc)
-  //   const allowedUpdates = {
-  //     productName: updateData.productName,
-  //     minStockLevel: updateData.minStockLevel,
-  //     isActive: updateData.isActive
-  //   };
+    // ✅ Allowed editable fields (per Phase 2 doc)
+    const allowedUpdates = {
+      productName: updateData.productName,
+      minStockLevel: updateData.minStockLevel,
+      isActive: updateData.isActive
+    };
 
-  //   // Update MSP for variations if provided
-  //   if (updateData.variations && Array.isArray(updateData.variations)) {
-  //     for (const updatedVar of updateData.variations) {
-  //       const variation = product.variations.find(v => v._id.toString() === updatedVar.variationId);
-  //       if (variation && updatedVar.minSellingPrice !== undefined) {
-  //         variation.minSellingPrice = updatedVar.minSellingPrice;
-  //       }
-  //     }
-  //   }
+    // Update MSP for variations if provided
+    if (updateData.variations && Array.isArray(updateData.variations)) {
+      for (const updatedVar of updateData.variations) {
+        const variation = product.variations.find(v => v._id.toString() === updatedVar.variationId);
+        if (variation && updatedVar.minSellingPrice !== undefined) {
+          variation.minSellingPrice = updatedVar.minSellingPrice;
+        }
+      }
+    }
 
-  //   // Apply allowed updates
-  //   Object.keys(allowedUpdates).forEach(key => {
-  //     if (allowedUpdates[key] !== undefined) {
-  //       product[key] = allowedUpdates[key];
-  //     }
-  //   });
+    // Apply allowed updates
+    Object.keys(allowedUpdates).forEach(key => {
+      if (allowedUpdates[key] !== undefined) {
+        product[key] = allowedUpdates[key];
+      }
+    });
 
-  //   // Save updated product
-  //   const updatedProduct = await productRepository.save(product);
+    // Save updated product
+    const updatedProduct = await productRepository.save(product);
 
-  //   return {
-  //     _id: updatedProduct._id,
-  //     productName: updatedProduct.productName,
-  //     stockDisplay: this.formatStockDisplay(updatedProduct),
-  //     message: 'Product updated successfully'
-  //   };
-  // }
+    return {
+      _id: updatedProduct._id,
+      productName: updatedProduct.productName,
+      stockDisplay: this.formatStockDisplay(updatedProduct),
+      message: 'Product updated successfully'
+    };
+  }
 
   // Soft delete product
   async deleteProduct(productId, userId) {
@@ -614,4 +617,3 @@ class ProductService {
 
 module.exports = new ProductService();
 
-module.exports = new ProductService();

@@ -20,11 +20,14 @@ app.use(express.urlencoded({ extended: true }));
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
+
+
 // product routes
 const productRoutes = require('./routes/productRoutes');
 app.use('/api/products', productRoutes);
 
 
+<<<<<<< Updated upstream
 // inventory routes
 const inventoryRoutes = require('./routes/inventoryRoutes');
 app.use('/api/inventory', inventoryRoutes);
@@ -34,6 +37,9 @@ const salesRoutes = require('./routes/salesRoutes');
 app.use('/api/sales', salesRoutes);
 
 // purchase routes
+=======
+// // Purchase routes (Phase 2)
+>>>>>>> Stashed changes
 const purchaseRoutes = require('./routes/purchaseRoutes');
 app.use('/api/purchases', purchaseRoutes);
 

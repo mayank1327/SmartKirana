@@ -1,5 +1,5 @@
 const Product = require('../models/Product');
-const Sale = require('../models/Sale');
+// const Sale = require('../models/Sale');
 const Purchase = require('../models/Purchase');
 
 class ReportRepository {

@@ -1,6 +1,6 @@
 const Product = require('../models/Product');
 const Purchase = require('../models/Purchase');
-const Sale = require('../models/Sale');
+// const Sale = require('../models/Sale');
 
 class AlertService {
   // Generate all alerts for the system

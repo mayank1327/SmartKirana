@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs'); // For password hashing
+const bcrypt = require('bcryptjs'); 
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -9,31 +9,29 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'], // Mongoose validates before saving
-    unique: true, //  MongoDB enforces at DB level (prevents duplicates)
-    index: true,  // Faster queries on email (for login lookups)
+    required: [true, 'Email is required'],
     lowercase: true,
-    match: [/.+@.+\..+/, 'Please enter a valid email'] // Most of the devs prefer this and joi validation for complex
+    match: [/.+@.+\..+/, 'Please enter a valid email'] 
   },
   password: {
     type: String,
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters'],
-    select: false // CRITICAL: Excludes from queries by default
+    select: false 
   },
-  role: { // TODO : Will you need permissions per role later?
+  role: { 
     type: String,
     enum: ['owner', 'staff', 'manager'],
     required : [true, 'Role is required']
   }
 }, {
-  timestamps: true // Automatically manage createdAt and updatedAt fields
+  timestamps: true 
 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next(); // Only hash if password is modified or new
-  this.password = await bcrypt.hash(this.password, 12); // Hashing password with salt of 12 rounds
+  if (!this.isModified('password')) return next(); 
+  this.password = await bcrypt.hash(this.password, 12); 
   next();
 });
 

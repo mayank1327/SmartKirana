@@ -41,9 +41,24 @@ const purchaseSchema = new mongoose.Schema({
     type: String,
     unique: true,
   },
+<<<<<<< Updated upstream
   purchaseDate: {
     type: Date,
     default: Date.now
+=======
+  
+  // User (shop owner)
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'User reference is required'],
+  },
+  
+  // Purchase details
+  purchaseDate: {
+    type: Date,
+    default: Date.now,
+>>>>>>> Stashed changes
   },
   supplierName: {
     type: String,

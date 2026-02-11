@@ -30,11 +30,12 @@ router.route('/')
 
 router.get('/today', getTodaysBills);
 
+// Temporary products routes
+router.get('/temporary-products', getTemporaryProducts);
+
 router.route('/:billId')
   .get(validate(billIdParamSchema, 'params'), getBill);
 
-// Temporary products routes
-router.get('/temporary-products', getTemporaryProducts);
 
 router.route('/temporary-products/:tempProductId/complete-setup')
   .post(
