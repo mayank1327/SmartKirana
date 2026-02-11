@@ -389,6 +389,8 @@ class ProductService {
     // Get product from repository
     const product = await productRepository.findById(productId);
 
+    console.log(product);
+
     // Check if product exists
     if (!product) {
       const error = new Error('Product not found');
