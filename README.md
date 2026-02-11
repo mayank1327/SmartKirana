@@ -867,8 +867,8 @@ MIT License - See LICENSE file
 ## 👨‍💻 Author
 
 **Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
+- GitHub: [@mayank1327](https://github.com/mayank1327)
+- Email: your.mayankmehta1327@gmail.com
 
 ---
 
@@ -878,14 +878,6 @@ MIT License - See LICENSE file
 - Express.js for robust framework
 - JWT for secure authentication
 - Jest for comprehensive testing
-
----
-
-## 📞 Support
-
-**Issues?** Open GitHub issue
-**Questions?** Email: support@smartkirana.com
-**Docs?** [Full Documentation](https://docs.smartkirana.com)
 
 ---
 
