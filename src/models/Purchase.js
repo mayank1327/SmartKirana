@@ -75,8 +75,7 @@ const purchaseSchema = new mongoose.Schema({
   // Purchase details
   purchaseDate: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   
   supplierName: {

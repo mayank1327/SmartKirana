@@ -20,6 +20,7 @@ const router = express.Router();
 // Protect all routes (require authentication)
 router.use(protect);
 
+
 // CRUD routes
 router.route('/')
   .get(validate(getProductsQuerySchema, 'query'), getAllProducts)

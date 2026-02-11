@@ -37,6 +37,7 @@ const getProduct = async (req, res, next) => {
 // Create product
 const createProduct = async (req, res, next) => {
   try {
+    console.log(req.body);
     const productData = req.body;
   
     const userId = req.user._id;  // From auth middleware
@@ -49,6 +50,7 @@ const createProduct = async (req, res, next) => {
       data: product
     });
   } catch (error) {
+    
     next(error);
   }
 };

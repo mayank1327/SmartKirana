@@ -63,7 +63,7 @@ const billSchema = new mongoose.Schema({
   // Bill identification
   billNumber: {
     type: String,
-    unique: true,
+     unique: true,
     // required: [true, 'Bill number is required']
   },
   
@@ -79,7 +79,6 @@ const billSchema = new mongoose.Schema({
   billDate: {
     type: Date,
     default: Date.now,
-    index: true
   },
   
   customerName: {

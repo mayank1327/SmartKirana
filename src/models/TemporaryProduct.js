@@ -6,7 +6,6 @@ const temporaryProductSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'User reference is required'],
-    index: true
   },
   
   // Product name (unique per user, case-insensitive)
@@ -69,16 +68,5 @@ const temporaryProductSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// // Compound unique index: productName per user (case-insensitive)
-// temporaryProductSchema.index(
-//   { userId: 1, productName: 1 },
-//   { 
-//     unique: true,
-//     collation: { locale: 'en', strength: 2 }  // Case-insensitive
-//   }
-// );
-
-// Index for querying pending setup items
-// temporaryProductSchema.index({ userId: 1, isPendingSetup: 1, lastSoldDate: -1 });
 
 module.exports = mongoose.model('TemporaryProduct', temporaryProductSchema);
