@@ -6,8 +6,6 @@ A complete backend solution for wholesale-first kirana shops with advanced multi
 
 ---
 
----
-
 ## 🎯 Why SmartKirana Exists
 
 ### The Problem
@@ -38,8 +36,6 @@ Built with real-world constraints in mind:
 - Non-blocking stock warnings (real-world: customer waiting, allow overselling)
 - Automatic margin protection (cost increases trigger MSP review)
 
----
-
 Market size: 70,000-1,00,000 wholesale-retail hybrid shops across tier 2/3/4 cities in India (out of 15-18 lakh total wholesale-retail market).
 
 ---
@@ -47,6 +43,7 @@ Market size: 70,000-1,00,000 wholesale-retail hybrid shops across tier 2/3/4 cit
 ### Status
 **Built, not yet deployed**. This is a production-ready backend designed to solve a validated market problem. The technical implementation handles real operational constraints, but customer deployment and iteration based on ground feedback is pending.
 
+---
 ---
 
 ## 📋 Table of Contents
