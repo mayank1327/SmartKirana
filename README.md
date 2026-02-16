@@ -2,7 +2,7 @@
 
 **Multi-Unit Inventory Management System for Kirana Shops**
 
-A complete backend solution for small kirana shops with advanced multi-unit product management, variation-based billing, and intelligent MSP review workflow.
+A complete backend solution for wholesale-first kirana shops with advanced multi-unit product management, variation-based billing, and intelligent MSP review workflow.
 
 ---
 
@@ -11,30 +11,12 @@ A complete backend solution for small kirana shops with advanced multi-unit prod
 ## 🎯 Why SmartKirana Exists
 
 ### The Problem
-
-Wholesaler-retailer hybrid kirana shops (70,000+ in India) face daily operational chaos:
+Kirana shops that operate as both wholesalers (selling to other retailers) and retailers (selling to consumers) face a daily operational chaos that pen-paper cannot solve
 
 - **Stock confusion**: Managing 200-500 products across dual business (wholesale + retail) without knowing exact stock levels
 - **Purchase guesswork**: Ordering from suppliers based on memory, leading to stock-outs or over-ordering
 - **Financial leakage**: ₹24-36k annual losses due to selling below cost, stock wastage, and poor purchase decisions
 - **Time waste**: 3-4 hours daily on manual registers and physical counting
-
-**Pen-paper systems completely break** for shops with:
-- 200-500 different products
-- Dual operations (wholesale bulk orders + retail walk-ins)
-- Multiple suppliers with changing costs
-- ₹5-10L monthly turnover, ₹15-30k profit
-
-### The Target Customer
-
-**Level 5, Type A Shops** - Wholesaler + Retailer hybrids:
-- 70% wholesale (selling to other retailers)
-- 30% retail (selling to consumers)
-- 2-3 people total (owner + family/helper)
-- Cannot afford dedicated staff for inventory
-- Owner age 25-40, smartphone-comfortable, wants to modernize
-
-**Market size**: 70,000-1,00,000 such shops across tier 2/3/4 cities in India
 
 ### The Solution
 
@@ -53,9 +35,9 @@ Built with real-world constraints in mind:
 - Non-blocking stock warnings (real-world: customer waiting, allow overselling)
 - Automatic margin protection (cost increases trigger MSP review)
 
-### Status
+---
 
-**Built, not yet deployed**. This is a production-ready backend designed to solve a validated market problem. The technical implementation handles real operational constraints, but customer deployment and iteration based on ground feedback is pending.
+**Market size**: 70,000-1,00,000 such shops across tier 2/3/4 cities in India from (15 - 18 Lakh wholesale - retail market).
 
 ---
 
@@ -142,31 +124,31 @@ Built with real-world constraints in mind:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     CLIENT (React)                      │
+│                     CLIENT                              │
 └────────────────────┬────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  Express Routes                          │
+│                  Express Routes                         │
 │  /api/auth  /api/products  /api/bills  /api/purchases   │
 └────────────────────┬────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│                   Controllers                            │
-│   (Request validation, Response formatting)              │
+│                   Controllers                           │
+│      (Request validation, Response formatting)          │
 └────────────────────┬────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│                    Services                              │
-│  (Business logic, Transactions, MSP calculations)        │
+│                    Services                             │
+│   (Business logic, Transactions, MSP calculations)      │
 └────────────────────┬────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  Repositories                            │
-│         (Database operations, Queries)                   │
+│                  Repositories                           │
+│          (Database operations, Queries)                 │
 └────────────────────┬────────────────────────────────────┘
                      │
                      ▼
@@ -863,14 +845,19 @@ CORS_ORIGIN=http://localhost:5173
 - [x] Comprehensive tests
 
 ### **Future Enhancements** 🔜
-- [ ] Barcode scanning
-- [ ] Reports & Analytics
-- [ ] Supplier management
-- [ ] Expense tracking
-- [ ] Employee management
-- [ ] Mobile app (React Native)
+- [ ] Voice based Operations
+- [ ] Festival Mode Intelligence
+- [ ] Multi-location Inventory
+- [ ] Market Price Intelligence
+- [ ] AI Smart Alerts - 
+      - [ ] Predictive Reordering
+      - [ ] Smart Defaults
+      - [ ] Sales Trends & Insights 
 
 ---
+
+### Status
+**Built, not yet deployed**. This is a production-ready backend designed to solve a validated market problem. The technical implementation handles real operational constraints, but customer deployment and iteration based on ground feedback is pending.
 
 ## 📝 Key Decisions & Why
 
