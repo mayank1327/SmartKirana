@@ -11,12 +11,15 @@ A complete backend solution for wholesale-first kirana shops with advanced multi
 ## 🎯 Why SmartKirana Exists
 
 ### The Problem
+
 Kirana shops that operate as both wholesalers (selling to other retailers) and retailers (selling to consumers) face a daily operational chaos that pen-paper cannot solve
 
 - **Stock confusion**: Managing 200-500 products across dual business (wholesale + retail) without knowing exact stock levels
 - **Purchase guesswork**: Ordering from suppliers based on memory, leading to stock-outs or over-ordering
 - **Financial leakage**: ₹24-36k annual losses due to selling below cost, stock wastage, and poor purchase decisions
 - **Time waste**: 3-4 hours daily on manual registers and physical counting
+
+---
 
 ### The Solution
 
