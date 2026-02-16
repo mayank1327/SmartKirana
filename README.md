@@ -40,7 +40,12 @@ Built with real-world constraints in mind:
 
 ---
 
-**Market size**: 70,000-1,00,000 such shops across tier 2/3/4 cities in India from (15 - 18 Lakh wholesale - retail market).
+Market size: 70,000-1,00,000 wholesale-retail hybrid shops across tier 2/3/4 cities in India (out of 15-18 lakh total wholesale-retail market).
+
+---
+
+### Status
+**Built, not yet deployed**. This is a production-ready backend designed to solve a validated market problem. The technical implementation handles real operational constraints, but customer deployment and iteration based on ground feedback is pending.
 
 ---
 
@@ -858,9 +863,6 @@ CORS_ORIGIN=http://localhost:5173
       - [ ] Sales Trends & Insights 
 
 ---
-
-### Status
-**Built, not yet deployed**. This is a production-ready backend designed to solve a validated market problem. The technical implementation handles real operational constraints, but customer deployment and iteration based on ground feedback is pending.
 
 ## 📝 Key Decisions & Why
 
