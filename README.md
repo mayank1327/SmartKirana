@@ -6,6 +6,59 @@ A complete backend solution for small kirana shops with advanced multi-unit prod
 
 ---
 
+---
+
+## 🎯 Why SmartKirana Exists
+
+### The Problem
+
+Wholesaler-retailer hybrid kirana shops (70,000+ in India) face daily operational chaos:
+
+- **Stock confusion**: Managing 200-500 products across dual business (wholesale + retail) without knowing exact stock levels
+- **Purchase guesswork**: Ordering from suppliers based on memory, leading to stock-outs or over-ordering
+- **Financial leakage**: ₹24-36k annual losses due to selling below cost, stock wastage, and poor purchase decisions
+- **Time waste**: 3-4 hours daily on manual registers and physical counting
+
+**Pen-paper systems completely break** for shops with:
+- 200-500 different products
+- Dual operations (wholesale bulk orders + retail walk-ins)
+- Multiple suppliers with changing costs
+- ₹5-10L monthly turnover, ₹15-30k profit
+
+### The Target Customer
+
+**Level 5, Type A Shops** - Wholesaler + Retailer hybrids:
+- 70% wholesale (selling to other retailers)
+- 30% retail (selling to consumers)
+- 2-3 people total (owner + family/helper)
+- Cannot afford dedicated staff for inventory
+- Owner age 25-40, smartphone-comfortable, wants to modernize
+
+**Market size**: 70,000-1,00,000 such shops across tier 2/3/4 cities in India
+
+### The Solution
+
+SmartKirana automates stock tracking through daily billing and purchase operations—**no separate manual counting needed**.
+
+**Core value**: Know exact stock levels anytime, make data-driven purchase decisions, save time and prevent revenue leakage.
+
+**How it works**:
+1. Create bills (wholesale/retail) → Stock automatically deducts
+2. Record purchases → Stock automatically adds
+3. Check dashboard → See low stock, plan purchases intelligently
+
+Built with real-world constraints in mind:
+- Transaction-safe operations (MongoDB transactions)
+- Flexible pricing (owner controls prices, system protects margins)
+- Non-blocking stock warnings (real-world: customer waiting, allow overselling)
+- Automatic margin protection (cost increases trigger MSP review)
+
+### Status
+
+**Built, not yet deployed**. This is a production-ready backend designed to solve a validated market problem. The technical implementation handles real operational constraints, but customer deployment and iteration based on ground feedback is pending.
+
+---
+
 ## 📋 Table of Contents
 
 - [Features](#-features)
