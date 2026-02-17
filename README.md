@@ -908,9 +908,9 @@ MIT License - See LICENSE file
 
 ## 👨‍💻 Author
 
-**Your Name**
+**Mayank Mehta**
 - GitHub: [@mayank1327](https://github.com/mayank1327)
-- Email: your.mayankmehta1327@gmail.com
+- Email:  mayankmehta1327@gmail.com
 
 ---
 
