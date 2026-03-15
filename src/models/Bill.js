@@ -1,50 +1,50 @@
 const mongoose = require('mongoose');
 
-// Bill item sub-schema
 const billItemSchema = new mongoose.Schema({
-  // For existing products (normal flow)
+
+  isTemporary: {
+    type: Boolean,
+    default: false
+  },
+
   productId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
-    default: null  // Null for temporary products
+    default: null
   },
+
+  variationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null
+  },
+
+  variationName: {
+    type: String,
+    default: null
+  },
+
+  /* Unified name field 
+   * Regular product ke liye: Product ka naam (denormalized copy)
+   * Temp product ke liye: user-entered naam */
+
   productName: {
     type: String,
     required: [true, 'Product name is required'],
     trim: true
   },
-  
-  // Variation details (only for existing products)
-  variationId: {
-    type: mongoose.Schema.Types.ObjectId,
-    default: null  // Null for temporary products
-  },
-  variationName: {
-    type: String,
-    default: null  // Null for temporary products
-  },
-  
-  // For temporary products (Quick Add)
-  tempProductName: {
-    type: String,
-    default: null,  // Only filled for temporary products
-    trim: true
-  },
-  
-  // Common fields for all items
+
   quantity: {
     type: Number,
     required: [true, 'Quantity is required'],
     min: [0.01, 'Quantity must be greater than 0']
   },
-  
+
   pricePerUnit: {
     type: Number,
     required: [true, 'Price per unit is required'],
     min: [0, 'Price cannot be negative']
   },
-  
-  // Effective price after line total adjustment
+
   effectivePricePerUnit: {
     type: Number,
     required: [true, 'Effective price is required'],
@@ -56,18 +56,17 @@ const billItemSchema = new mongoose.Schema({
     required: [true, 'Line total is required'],
     min: [0, 'Line total cannot be negative']
   }
+
 }, { _id: true });
 
-// Main Bill Schema
 const billSchema = new mongoose.Schema({
-  // Bill identification
+ 
   billNumber: {
     type: String,
-     unique: true,
-    // required: [true, 'Bill number is required']
+    unique: true,
+    sparse: true  // null values ko unique constraint se exempt karo
   },
   
-  // User (shop owner)
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -75,7 +74,6 @@ const billSchema = new mongoose.Schema({
     index: true
   },
   
-  // Bill details
   billDate: {
     type: Date,
     default: Date.now,
@@ -88,10 +86,8 @@ const billSchema = new mongoose.Schema({
     default: null  // Optional
   },
   
-  // Items array (existing + temporary products)
   items: [billItemSchema],
   
-  // Pricing
   subTotal: {
     type: Number,
     required: [true, 'Sub total is required'],
@@ -100,29 +96,20 @@ const billSchema = new mongoose.Schema({
   
   discount: {
     type: Number,
-    default: 0,  // Can be negative (discount) or positive (adjustment)
-    required: [true, 'Discount is required']
+    default: 0,  
+    max: [0, 'Discount cannot be positive']
   },
   
   finalTotal: {
     type: Number,
     required: [true, 'Final total is required'],
     min: [0.01, 'Final total must be greater than 0']
-  },
-  
-  // Metadata
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
-}, {
-  timestamps: true
-});
+
+}, {timestamps: true });
+
+billSchema.index({ userId: 1, billDate: -1 });
+billSchema.index({ userId: 1, billNumber: 1 });
 
 // Auto-generate bill number (BILL-YYYYMMDD-XXX)
 billSchema.pre('save', async function(next) {
@@ -153,7 +140,6 @@ billSchema.pre('save', async function(next) {
   }
 });
 
-// Validation: At least one item required
 billSchema.pre('validate', function(next) {
   if (!this.items || this.items.length === 0) {
     return next(new Error('At least one item is required in the bill'));
