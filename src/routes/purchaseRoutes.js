@@ -3,7 +3,6 @@ const {
   createPurchase,
   getPurchases,
   getPurchase,
-  getTodaysPurchases
 } = require('../controllers/purchaseController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
@@ -15,15 +14,11 @@ const {
 
 const router = express.Router();
 
-// Protect all routes
 router.use(protect);
 
-// Purchase routes
 router.route('/')
   .get(validate(getPurchasesQuerySchema, 'query'), getPurchases)
   .post(validate(createPurchaseSchema), createPurchase);
-
-router.get('/today', getTodaysPurchases);
 
 router.route('/:purchaseId')
   .get(validate(purchaseIdParamSchema, 'params'), getPurchase);
