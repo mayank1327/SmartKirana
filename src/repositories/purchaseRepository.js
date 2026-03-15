@@ -2,7 +2,7 @@ const Purchase = require('../models/Purchase');
 
 class PurchaseRepository {
   
-  // Create new purchase
+  
   async create(purchaseData, session = null) {
     if (session) {
       return Purchase.create([purchaseData], { session }).then(docs => docs[0]);
@@ -10,7 +10,6 @@ class PurchaseRepository {
     return Purchase.create(purchaseData);
   }
   
-  // Find purchase by ID
   async findById(id, populate = [], session = null) {
     let query = Purchase.findById(id);
     
@@ -28,13 +27,12 @@ class PurchaseRepository {
     return query.exec();
   }
   
-  // Find purchases with filters
-  async findPurchases(filter = {}, options = {}, session = null) {
+  async findAll(filter = {}, options = {}, session = null) {
     const { 
       skip = 0, 
       limit = 20, 
       sort = { purchaseDate: -1 }, 
-      select = '', 
+      select = null, 
       populate = [] 
     } = options;
     
@@ -55,33 +53,27 @@ class PurchaseRepository {
     
     return query.exec();
   }
+
+  async findOne(filter = {}, session = null) {
+    return session
+      ? Purchase.findOne(filter).session(session)
+      : Purchase.findOne(filter);
+  }
   
-  // Count documents
   async countDocuments(filter = {}, session = null) {
     return session
       ? Purchase.countDocuments(filter).session(session)
       : Purchase.countDocuments(filter);
   }
   
-  // Aggregate
-  async aggregate(pipeline = [], session = null) {
-    if (session) {
-      return Purchase.aggregate(pipeline).session(session);
-    }
+  async aggregate(pipeline = []) {
     return Purchase.aggregate(pipeline);
   }
   
-  // Save purchase instance
   async save(purchase, session = null) {
     return session ? purchase.save({ session }) : purchase.save();
   }
   
-  // Find one purchase
-  async findOne(filter = {}, session = null) {
-    return session
-      ? Purchase.findOne(filter).session(session)
-      : Purchase.findOne(filter);
-  }
 }
 
 module.exports = new PurchaseRepository();
