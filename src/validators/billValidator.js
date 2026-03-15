@@ -1,7 +1,8 @@
 const Joi = require('joi');
 
-// Bill item schema (existing product)
+
 const existingProductItemSchema = Joi.object({
+  isTemporary: Joi.boolean().valid(false).default(false).optional(),
   productId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
     'string.pattern.base': 'Product ID must be a valid ObjectId',
     'any.required': 'Product ID is required for existing products'
@@ -27,9 +28,9 @@ const existingProductItemSchema = Joi.object({
   tempProductName: Joi.forbidden()
 });
 
-// Bill item schema (temporary product)
 const temporaryProductItemSchema = Joi.object({
-  tempProductName: Joi.string().trim().max(100).required().messages({
+  isTemporary: Joi.boolean().valid(true).required(),
+  productName: Joi.string().trim().max(100).required().messages({
     'string.empty': 'Product name is required',
     'string.max': 'Product name cannot exceed 100 characters',
     'any.required': 'Product name is required for temporary products'
@@ -52,7 +53,6 @@ const temporaryProductItemSchema = Joi.object({
   variationId: Joi.forbidden()
 });
 
-// Bill item schema (accepts either type)
 const billItemSchema = Joi.alternatives().try(
   existingProductItemSchema,
   temporaryProductItemSchema
@@ -60,7 +60,6 @@ const billItemSchema = Joi.alternatives().try(
   'alternatives.match': 'Item must be either an existing product or temporary product'
 });
 
-// Create bill validation
 const createBillSchema = Joi.object({
   billDate: Joi.date().iso().max('now').optional().messages({
     'date.base': 'Bill date must be a valid date',
@@ -73,12 +72,11 @@ const createBillSchema = Joi.object({
     'array.min': 'At least one item is required',
     'any.required': 'Items are required'
   }),
-  discount: Joi.number().default(0).optional().messages({
+  discount: Joi.number().max(0).default(0).optional().messages({
     'number.base': 'Discount must be a number'
   })
 });
 
-// Get bills query validation
 const getBillsQuerySchema = Joi.object({
   startDate: Joi.date().iso().optional().messages({
     'date.base': 'Start date must be a valid date'
@@ -92,7 +90,6 @@ const getBillsQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(20).optional()
 });
 
-// Bill ID param validation
 const billIdParamSchema = Joi.object({
   billId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
     'string.pattern.base': 'Invalid bill ID format',
@@ -100,29 +97,8 @@ const billIdParamSchema = Joi.object({
   })
 });
 
-// Temp product ID param validation
-const tempProductIdParamSchema = Joi.object({
-  tempProductId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
-    'string.pattern.base': 'Invalid temporary product ID format',
-    'any.required': 'Temporary product ID is required'
-  })
-});
-
-// Complete setup validation (reuse product creation schema)
-const completeSetupSchema = Joi.object({
-  productName: Joi.string().trim().max(100).required(),
-  units: Joi.array().min(1).required(),
-  variations: Joi.array().min(1).required(),
-  minStockLevel: Joi.object({
-    value: Joi.number().positive().required(),
-    unit: Joi.string().required()
-  }).optional().allow(null)
-});
-
 module.exports = {
   createBillSchema,
   getBillsQuerySchema,
   billIdParamSchema,
-  tempProductIdParamSchema,
-  completeSetupSchema
 };
