@@ -2,21 +2,19 @@ const authService = require('../services/authService');
 // Thin layer 
 const register = async (req, res, next) => {
   try {
-    // 1. Extract data from HTTP request
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
     
-    // 2. Call service (business logic)
-    const result = await authService.registerUser({ name, email, password, role });
+    const result = await authService.registerUser({ name, email, password });
 
-    // // 3. Send HTTP response
-      // Send proper user object
-      res.status(201).json({
-        success: true,
-        token : result.token,
-        user: result.data,
-      });
+    res.status(201).json({
+      success: true,
+      data: {
+        token: result.token,
+        user: result.data
+      }
+    });
   } catch (error) {
-    next(error); // 4. Pass error to middleware
+    next(error); 
   }
 };
 
@@ -27,8 +25,10 @@ const login = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      token: result.token,
-      user: result.data,
+      data: {
+        token: result.token,
+        user: result.data
+      }
     });
   } catch (error) {
     next(error);
