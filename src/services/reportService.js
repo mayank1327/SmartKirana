@@ -1,356 +1,220 @@
+const mongoose = require('mongoose');
 const reportRepository = require('../repositories/reportRepository');
+const TemporaryProduct = require('../models/TemporaryProduct');
+const { formatStockDisplay } = require('../utils/stockUtils');
 
 class ReportService {
-  // Get comprehensive dashboard statistics
-  async getDashboardStats() {
+
+  async getDashboardStats(userId) {
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-
-    
-    // Get current month start
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    // Product statistics
-    const productStats = await reportRepository.aggregateProducts([
-      { $match: { isActive: true } },
-      {
-        $group: {
-          _id: null,
-          totalProducts: { $sum: 1 },
-          lowStockCount: {
-            $sum: {
-              $cond: [{ $lte: ['$currentStock', '$minStockLevel'] }, 1, 0]
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+  
+    const [productStats, todayBills, weeklyPurchases, pendingTempCount] = await Promise.all([
+  
+      // Product stats — low stock + out of stock count
+      reportRepository.aggregateProducts([
+        { $match: { isActive: true, userId: new mongoose.Types.ObjectId(userId) } },
+        {
+          $group: {
+            _id: null,
+            totalProducts: { $sum: 1 },
+            lowStockCount: {
+              $sum: {
+                $cond: [{
+                  $and: [
+                    { $ne: ['$minStockLevel', null] },
+                    { $gt: ['$currentStock', 0] },
+                    { $lte: ['$currentStock', '$minStockLevel'] }
+                  ]
+                }, 1, 0]
+              }
+            },
+            outOfStockCount: {
+              $sum: {
+                $cond: [{ $lte: ['$currentStock', 0] }, 1, 0]
+              }
             }
-          },
-          outOfStockCount: {
-            $sum: {
-              $cond: [{ $eq: ['$currentStock', 0] }, 1, 0]
-            }
-          },
-          totalInventoryValue: {
-            $sum: { $multiply: ['$currentStock', '$costPrice'] }
           }
         }
-      }
+      ]),
+  
+      // Today's bills
+      reportRepository.aggregateBills([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            billDate: { $gte: startOfToday, $lte: endOfToday }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalBills: { $sum: 1 },
+            totalRevenue: { $sum: '$finalTotal' }
+          }
+        }
+      ]),
+  
+      // Weekly purchases
+      reportRepository.aggregatePurchases([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            purchaseDate: { $gte: startOfWeek }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalPurchases: { $sum: 1 }
+          }
+        }
+      ]),
+  
+      // Pending temp products
+      TemporaryProduct.countDocuments({ userId, isPendingSetup: true })
     ]);
-
-    // Today's sales statistics
-    const todaySales = await reportRepository.aggregateSales([
-      {
-        $match: {
-          saleDate: { $gte: startOfToday, $lte: endOfToday }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalSales: { $sum: 1 },
-          totalRevenue: { $sum: '$totalAmount' },
-          cashSales: {
-            $sum: {
-              $cond: [{ $eq: ['$paymentMethod', 'cash'] }, '$totalAmount', 0]
-            }
-          },
-        }
-      }
-    ]);
-
-    // Monthly statistics
-    const monthlySales = await reportRepository.aggregateSales([
-      {
-        $match: {
-          saleDate: { $gte: startOfMonth }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          monthlyRevenue: { $sum: '$totalAmount' },
-          monthlySalesCount: { $sum: 1 }
-        }
-      }
-    ]);
-
-    // Pending payments
-    const pendingPayments = await reportRepository.aggregatePurchases([
-      {
-        $match: {
-          paymentStatus: { $in: ['pending', 'partial'] }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalPendingAmount: {
-            $sum: { $subtract: ['$totalAmount', '$paidAmount'] }
-          },
-          pendingPurchasesCount: { $sum: 1 }
-        }
-      }
-    ]);
-
+  
     return {
-      products: productStats[0] || {
-        totalProducts: 0,
-        lowStockCount: 0,
-        outOfStockCount: 0,
-        totalInventoryValue: 0
+      todayBills: todayBills[0] || { totalBills: 0, totalRevenue: 0 },
+      weeklyPurchases: weeklyPurchases[0] || { totalPurchases: 0 },
+      stockAlerts: {
+        lowStockCount: productStats[0]?.lowStockCount || 0,
+        outOfStockCount: productStats[0]?.outOfStockCount || 0,
+        totalAlerts: (productStats[0]?.lowStockCount || 0) + (productStats[0]?.outOfStockCount || 0)
       },
-      todaySales: todaySales[0] || {
-        totalSales: 0,
-        totalRevenue: 0,
-        totalDiscount: 0,
-        cashSales: 0,
-        creditSales: 0
-      },
-      monthlySales: monthlySales[0] || {
-        monthlyRevenue: 0,
-        monthlySalesCount: 0
-      },
-      pendingPayments: pendingPayments[0] || {
-        totalPendingAmount: 0,
-        pendingPurchasesCount: 0
-      }
+      pendingTempProductsCount: pendingTempCount
     };
   }
 
-  // Get low stock alert report
-  async getLowStockReport() {
-    const lowStockProducts = await reportRepository.findActiveProducts({
-      $expr: { $lte: ['$currentStock', '$minStockLevel'] }
-    }).sort({ currentStock: 1 });
-
-    const outOfStockProducts = await reportRepository.findActiveProducts({
-      currentStock: 0
-    }).sort({ name: 1 });
-
-    const criticalStockProducts = await reportRepository.findActiveProducts({
-      $expr: { $lt: ['$currentStock', { $multiply: ['$minStockLevel', 0.5] }] }
-    }).sort({ currentStock: 1 });
-
+  async getLowStockReport(userId) {
+    const [outOfStockProducts, lowStockProducts] = await Promise.all([
+  
+      // Out of stock — currentStock <= 0
+      reportRepository.findActiveProducts({
+        userId: new mongoose.Types.ObjectId(userId),
+        currentStock: { $lte: 0 }
+      }),
+  
+      // Low stock — 0 se zyada lekin minStockLevel se kam ya barabar
+      reportRepository.findActiveProducts({
+        userId: new mongoose.Types.ObjectId(userId),
+        minStockLevel: { $ne: null },
+        $expr: {
+          $and: [
+            { $gt: ['$currentStock', 0] },
+            { $lte: ['$currentStock', '$minStockLevel'] }
+          ]
+        }
+      })
+    ]);
+  
+    const formatProduct = (product) => ({
+      productId: product._id,
+      productName: product.productName,
+      currentStock: product.currentStock,
+      minStockLevel: product.minStockLevel,
+      stockDisplay: formatStockDisplay(product)
+    });
+  
     return {
-      lowStockProducts,
-      outOfStockProducts,
-      criticalStockProducts,
+      outOfStock: outOfStockProducts.map(formatProduct),
+      lowStock: lowStockProducts.map(formatProduct),
       summary: {
-        lowStockCount: lowStockProducts.length,
         outOfStockCount: outOfStockProducts.length,
-        criticalStockCount: criticalStockProducts.length
+        lowStockCount: lowStockProducts.length
       }
     };
   }
 
-  // Get daily sales summary report
-  async getDailySalesReport(date = new Date()) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    // Sales summary
-    const salesSummary = await reportRepository.aggregateSales([
+  async getTodayBills(userId) {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  
+    const bills = await reportRepository.aggregateBills([
       {
         $match: {
-          saleDate: { $gte: startOfDay, $lte: endOfDay }
+          userId: new mongoose.Types.ObjectId(userId),
+          billDate: { $gte: startOfToday, $lte: endOfToday }
         }
       },
       {
-        $group: {
-          _id: null,
-          totalSales: { $sum: 1 },
-          totalRevenue: { $sum: '$totalAmount' },
-          totalDiscount: { $sum: '$discount' },
-          averageSaleAmount: { $avg: '$totalAmount' }
+        $project: {
+          billNumber: 1,
+          billDate: 1,
+          customerName: 1,
+          finalTotal: 1,
+          itemsCount: { $size: '$items' },
+          createdAt: 1
         }
-      }
+      },
+      { $sort: { billDate: -1 } }
     ]);
-
-    // Top selling products
-    const topProducts = await reportRepository.aggregateSales([
-      {
-        $match: {
-          saleDate: { $gte: startOfDay, $lte: endOfDay }
-        }
-      },
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.product',
-          productName: { $first: '$items.productName' },
-          totalQuantitySold: { $sum: '$items.quantity' },
-          totalRevenue: { $sum: '$items.subtotal' }
-        }
-      },
-      { $sort: { totalQuantitySold: -1 } },
-      { $limit: 10 }
-    ]);
-
-    // Payment method breakdown
-    const paymentBreakdown = await reportRepository.aggregateSales([
-      {
-        $match: {
-          saleDate: { $gte: startOfDay, $lte: endOfDay }
-        }
-      },
-      {
-        $group: {
-          _id: '$paymentMethod',
-          count: { $sum: 1 },
-          amount: { $sum: '$totalAmount' }
-        }
-      }
-    ]);
-
+  
+    const totalRevenue = bills.reduce((sum, b) => sum + b.finalTotal, 0);
+  
     return {
-      date: date.toISOString().split('T')[0],
-      summary: salesSummary[0] || {
-        totalSales: 0,
-        totalRevenue: 0,
-        totalDiscount: 0,
-        averageSaleAmount: 0
+      summary: {
+        totalBills: bills.length,
+        totalRevenue
       },
-      topProducts,
-      paymentBreakdown
+      bills: bills.map(b => ({
+        billId: b._id,
+        billNumber: b.billNumber,
+        customerName: b.customerName || 'Walk-in',
+        finalTotal: b.finalTotal,
+        itemsCount: b.itemsCount,
+        billDate: b.billDate
+      }))
     };
   }
-
-  // Get inventory valuation report
-  async getInventoryValuation() {
-    const inventoryReport = await reportRepository.aggregateProducts([
-      { $match: { isActive: true } },
-      {
-        $addFields: {
-          totalCostValue: { $multiply: ['$currentStock', '$costPrice'] },
-          totalSellingValue: { $multiply: ['$currentStock', '$sellingPrice'] },
-          potentialProfit: {
-            $multiply: [
-              '$currentStock',
-              { $subtract: ['$sellingPrice', '$costPrice'] }
-            ]
-          }
-        }
-      },
-      {
-        $group: {
-          _id: '$category',
-          products: {
-            $push: {
-              name: '$name',
-              currentStock: '$currentStock',
-              costPrice: '$costPrice',
-              sellingPrice: '$sellingPrice',
-              totalCostValue: '$totalCostValue',
-              totalSellingValue: '$totalSellingValue',
-              potentialProfit: '$potentialProfit'
-            }
-          },
-          categoryTotal: { $sum: '$totalCostValue' },
-          categoryProfit: { $sum: '$potentialProfit' },
-          productCount: { $sum: 1 }
-        }
-      },
-      { $sort: { categoryTotal: -1 } }
-    ]);
-
-    // Calculate overall totals
-    const overallTotals = await reportRepository.aggregateProducts([
-      { $match: { isActive: true } },
-      {
-        $group: {
-          _id: null,
-          totalInventoryValue: {
-            $sum: { $multiply: ['$currentStock', '$costPrice'] }
-          },
-          totalSellingValue: {
-            $sum: { $multiply: ['$currentStock', '$sellingPrice'] }
-          },
-          totalPotentialProfit: {
-            $sum: {
-              $multiply: [
-                '$currentStock',
-                { $subtract: ['$sellingPrice', '$costPrice'] }
-              ]
-            }
-          }
-        }
-      }
-    ]);
-
-    return {
-      categoryBreakdown: inventoryReport,
-      overallTotals: overallTotals[0] || {
-        totalInventoryValue: 0,
-        totalSellingValue: 0,
-        totalPotentialProfit: 0
-      }
-    };
-  }
-
-  // Get profit analysis report
-  async getProfitAnalysis(startDate, endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // Get sales with product cost information
-    const profitAnalysis = await reportRepository.aggregateSales([
+  
+  async getWeeklyPurchases(userId) {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+  
+    const purchases = await reportRepository.aggregatePurchases([
       {
         $match: {
-          saleDate: { $gte: start, $lte: end }
-        }
-      },
-      { $unwind: '$items' },
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'items.product',
-          foreignField: '_id',
-          as: 'productInfo'
-        }
-      },
-      { $unwind: '$productInfo' },
-      {
-        $addFields: {
-          itemCost: { $multiply: ['$items.quantity', '$productInfo.costPrice'] },
-          itemProfit: {
-            $subtract: [
-              '$items.subtotal',
-              { $multiply: ['$items.quantity', '$productInfo.costPrice'] }
-            ]
-          }
+          userId: new mongoose.Types.ObjectId(userId),
+          purchaseDate: { $gte: startOfWeek }
         }
       },
       {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$items.subtotal' },
-          totalCost: { $sum: '$itemCost' },
-          totalProfit: { $sum: '$itemProfit' },
-          totalSales: { $sum: 1 }
+        $project: {
+          purchaseNumber: 1,
+          purchaseDate: 1,
+          supplierName: 1,
+          totalAmount: 1,
+          itemsCount: { $size: '$items' },
+          createdAt: 1
         }
-      }
+      },
+      { $sort: { purchaseDate: -1 } }
     ]);
-
-    const result = profitAnalysis[0] || {
-      totalRevenue: 0,
-      totalCost: 0,
-      totalProfit: 0,
-      totalSales: 0
+  
+    return {
+      summary: {
+        totalPurchases: purchases.length
+      },
+      purchases: purchases.map(p => ({
+        purchaseId: p._id,
+        purchaseNumber: p.purchaseNumber,
+        supplierName: p.supplierName || 'N/A',
+        totalAmount: p.totalAmount,
+        itemsCount: p.itemsCount,
+        purchaseDate: p.purchaseDate
+      }))
     };
-
-    // Calculate profit margin
-    result.profitMargin = result.totalRevenue > 0 
-      ? (result.totalProfit / result.totalRevenue) * 100 
-      : 0;
-
-    return result;
   }
 
-  // Centralized filter for active products
-  getActiveFilter(extra = {}) {
-    return { isActive: true, ...extra };
-  }
 }
 
 module.exports = new ReportService();
