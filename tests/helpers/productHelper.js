@@ -10,18 +10,17 @@ const Product = require('../../src/models/Product');
 async function createPhase2Product(userId, config) {
   const {
     productName,
-    units, // Array of unit names: ['piece', 'packet', 'carton']
-    variations, // Array of variation configs
+    units, 
+    variations, 
     costPricePerBaseUnit = null,
     currentStock = 0,
     minStockLevel = null
   } = config;
 
-  // Generate IDs for units
   const unitIds = units.map(() => new mongoose.Types.ObjectId());
   const baseUnitId = unitIds[0]; // First unit is always base
 
-  // Build units array
+  
   const unitsArray = units.map((unitName, index) => ({
     _id: unitIds[index],
     unitName: unitName.toLowerCase(),
@@ -93,8 +92,9 @@ async function createMaggiTestProduct(userId) {
         minSellingPrice: 700
       }
     ],
-    costPricePerBaseUnit: 4.17,
-    currentStock: 1440 // 10 cartons
+    costPricePerBaseUnit: 4,
+    currentStock: 1440, // 10 cartons
+    minStockLevel: 720 // 2 cartons
   });
 }
 
@@ -123,7 +123,7 @@ async function createParleTestProduct(userId) {
         minSellingPrice: 20
       }
     ],
-    costPricePerBaseUnit: 1.5,
+    costPricePerBaseUnit: 2,
     currentStock: 500 // 50 packets
   });
 }
@@ -131,5 +131,5 @@ async function createParleTestProduct(userId) {
 module.exports = {
   createPhase2Product,
   createMaggiTestProduct,
-  createParleTestProduct
+  createParleTestProduct,
 };
