@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// Purchase item sub-schema
+
 const purchaseItemSchema = new mongoose.Schema({
   productId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -12,8 +12,6 @@ const purchaseItemSchema = new mongoose.Schema({
     required: [true, 'Product name is required'],
     trim: true
   },
-  
-  // Variation details
   variationId: {
     type: mongoose.Schema.Types.ObjectId,
     required: [true, 'Variation reference is required']
@@ -23,26 +21,21 @@ const purchaseItemSchema = new mongoose.Schema({
     required: [true, 'Variation name is required'],
     trim: true
   },
-  
-  // Purchase details
   quantity: {
     type: Number,
     required: [true, 'Quantity is required'],
     min: [0.01, 'Quantity must be greater than 0']
   },
-  
   costPricePerUnit: {
     type: Number,
     required: [true, 'Cost price per unit is required'],
     min: [0, 'Cost price cannot be negative']
   },
-  
   lineTotal: {
     type: Number,
     required: [true, 'Line total is required'],
     min: [0, 'Line total cannot be negative']
   },
-  
   // Stock tracking (for reference/history)
   stockBefore: {
     type: Number,
@@ -53,18 +46,19 @@ const purchaseItemSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Stock after is required']
   }
+
 }, { _id: true });
 
-// Main Purchase Schema
+
 const purchaseSchema = new mongoose.Schema({
-  // Purchase identification
+
   purchaseNumber: {
     type: String,
     unique: true,
+    sparse: true 
     // required: [true, 'Purchase number is required']
   },
   
-  // User (shop owner)
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -72,7 +66,6 @@ const purchaseSchema = new mongoose.Schema({
     index: true
   },
   
-  // Purchase details
   purchaseDate: {
     type: Date,
     default: Date.now
@@ -85,44 +78,17 @@ const purchaseSchema = new mongoose.Schema({
     default: null  // Optional
   },
   
-  supplierBillNumber: {
-    type: String,
-    trim: true,
-    maxlength: [50, 'Supplier bill number cannot exceed 50 characters'],
-    default: null  // Optional
-  },
-  
-  notes: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Notes cannot exceed 500 characters'],
-    default: null  // Optional
-  },
-  
-  // Items array
   items: [purchaseItemSchema],
   
-  // Total amount
   totalAmount: {
     type: Number,
     required: [true, 'Total amount is required'],
     min: [0, 'Total amount cannot be negative']
-  },
-  
-  // Metadata
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
-}, {
-  timestamps: true
-});
 
+}, { timestamps: true });
+
+purchaseSchema.index({ userId: 1, purchaseDate: -1 });
 
 // Auto-generate purchase number (PUR-YYYYMMDD-XXX)
 purchaseSchema.pre('save', async function(next) {
