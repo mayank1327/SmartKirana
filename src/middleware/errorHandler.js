@@ -13,7 +13,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Mongoose validation error
   if (err.name === 'ValidationError') {
     const messages = Object.values(err.errors).map(val => val.message);
     return res.status(400).json({
@@ -31,7 +30,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Mongoose invalid ObjectId
   if (err.name === 'CastError') {
     return res.status(400).json({
       success: false,
