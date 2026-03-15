@@ -1,8 +1,8 @@
-const notFound = (req, res) => {
-    res.status(404).json({
-      success: false,
-      error: 'Yeh page uplabhd nahi hai - Not Found'
-    });
+const notFound = (req, res, next) => {
+  res.status(404).json({
+    success: false,
+    error: `Route ${req.method} ${req.originalUrl} not found`
+  });
 };
-  
+
 module.exports = notFound;
