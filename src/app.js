@@ -1,70 +1,38 @@
 const express = require('express');
-const cors = require('cors');      // cors → Security (allow cross-origin requests). cors → Accessibility (allow frontend & backend to communicate safely).
-const helmet = require('helmet'); // helmet → Security (protect your backend from common attacks).
-const morgan = require('morgan'); // morgan → Logging (log HTTP requests for debugging and monitoring). // Logging middleware (who hit API, status code, response time).
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const config = require('./config');
 
+const authRoutes = require('./routes/authRoutes');
+const productRoutes = require('./routes/productRoutes');
+const billRoutes = require('./routes/billRoutes');
+const purchaseRoutes = require('./routes/purchaseRoutes');
+const temporaryProductRoutes = require('./routes/temporaryProductRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+
+const notFound = require('./middleware/notFound');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-// Basic middleware
 app.use(helmet());
 app.use(cors());
-app.use(morgan('combined'));
+app.use(morgan(config.NODE_ENV === 'production' ? 'combined' : 'dev'));
+// combined in production for full audit logs, dev for readable output
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-// Routes
-
-// auth routes
-const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
-
-// product routes
-const productRoutes = require('./routes/productRoutes');
 app.use('/api/products', productRoutes);
-
-// Bill routes (Phase 2)
-const billRoutes = require('./routes/billRoutes');
 app.use('/api/bills', billRoutes);
-
-// // Purchase routes (Phase 2)
-const purchaseRoutes = require('./routes/purchaseRoutes');
 app.use('/api/purchases', purchaseRoutes);
-
-// report routes
-const reportRoutes = require('./routes/reportRoutes');
+app.use('/api/temporary-products', temporaryProductRoutes);
 app.use('/api/reports', reportRoutes);
-
-// health route
-const healthRoutes = require('./routes/healthRoutes');
 app.use('/api', healthRoutes);
 
-
-// Test protected route
-const { protect, authorize } = require('./middleware/auth');
-app.get('/api/test-protected', protect, authorize('owner'), (req, res) => {
-  console.log("Yeh Protected Route hai... Access Granted!!")
-  res.json({
-    success: true,
-    message: 'Access granted',
-    user: {
-      id: req.user._id,
-      name: req.user.name,
-      email: req.user.email,
-      role: req.user.role
-    }
-  });
-});
-
-
-const notFound = require('./middleware/notFound');
 app.use(notFound);
-
-
-// Use middleware
-const errorHandler = require('./middleware/errorHandler');
 app.use(errorHandler);
-
 
 module.exports = app;
