@@ -57,24 +57,8 @@ const getPurchase = async (req, res, next) => {
   }
 };
 
-// Get today's purchases
-const getTodaysPurchases = async (req, res, next) => {
-  try {
-    const userId = req.user._id;
-    const result = await purchaseService.getTodaysPurchases(userId);
-
-    res.status(200).json({
-      success: true,
-      data: result
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 module.exports = {
   createPurchase,
   getPurchases,
   getPurchase,
-  getTodaysPurchases
 };
