@@ -1,952 +1,481 @@
-# 🏪 SmartKirana - Backend (Phase 2)
+<div align="center">
 
-**Multi-Unit Inventory Management System for Kirana Shops**
+# SmartKirana — Backend
 
-A complete backend solution for wholesale-first kirana shops with advanced multi-unit product management, variation-based billing, and intelligent MSP review workflow.
+### _Stock clarity for wholesale-first kirana shops_
 
----
+> My family runs a Level 5 kirana — 70% wholesale, 30% retail, 300+ products, zero stock clarity.
+> SmartKirana is what I built to fix that. Every design decision traces back to something real.
 
-## 🎯 Why SmartKirana Exists
+![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-5.x-000000?style=flat-square&logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=flat-square&logo=mongodb&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-120%2B%20passing-brightgreen?style=flat-square&logo=jest)
+![JWT](https://img.shields.io/badge/Auth-JWT-orange?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-blue?style=flat-square)
 
-### The Problem
+**[API Docs (Swagger)](#api-documentation) · [Architecture](#architecture) · [Business Logic](#business-logic-that-matters) · [Quick Start](#quick-start)**
 
-Kirana shops that operate as both wholesalers (selling to other retailers) and retailers (selling to consumers) face a daily operational chaos that pen-paper cannot solve
-
-- **Stock confusion**: Managing 200-500 products across dual business (wholesale + retail) without knowing exact stock levels
-- **Purchase guesswork**: Ordering from suppliers based on memory, leading to stock-outs or over-ordering
-- **Financial leakage**: ₹24-36k annual losses due to selling below cost, stock wastage, and poor purchase decisions
-- **Time waste**: 3-4 hours daily on manual registers and physical counting
-
----
-
-### The Solution
-
-SmartKirana automates stock tracking through daily billing and purchase operations—**no separate manual counting needed**.
-
-**Core value**: Know exact stock levels anytime, make data-driven purchase decisions, save time and prevent revenue leakage.
-
-**How it works**:
-1. Create bills (wholesale/retail) → Stock automatically deducts
-2. Record purchases → Stock automatically adds
-3. Check dashboard → See low stock, plan purchases intelligently
-
-Built with real-world constraints in mind:
-- Transaction-safe operations (MongoDB transactions)
-- Flexible pricing (owner controls prices, system protects margins)
-- Non-blocking stock warnings (real-world: customer waiting, allow overselling)
-- Automatic margin protection (cost increases trigger MSP review)
-
-Market size: 70,000-1,00,000 wholesale-retail hybrid shops across tier 2/3/4 cities in India (out of 15-18 lakh total wholesale-retail market).
+</div>
 
 ---
 
-### Status
-**Built, not yet deployed**. This is a production-ready backend designed to solve a validated market problem. The technical implementation handles real operational constraints, but customer deployment and iteration based on ground feedback is pending.
+## The Problem
 
----
----
+India's kirana supply chain has 6–7 levels. Level 5 — the wholesale + retail hybrid — is the most complex and the most underserved. These shops run 70% wholesale (selling to smaller retailers) and 30% retail (walk-in consumers), manage 200–500 products, operate with 2–3 people total, and earn ₹15,000–30,000 monthly profit. Too complex for pen-paper. Too small for enterprise software.
 
-## 📋 Table of Contents
+**Our addressable market within Level 5:** ~70,000–1,00,000 shops that match all of: 200+ products, ₹5L+ monthly turnover, tech-comfortable owner aged 25–40, smartphone-first. Even 1% capture = 700–1,000 paying customers.
 
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Installation](#-installation)
-- [API Documentation](#-api-documentation)
-- [Database Schema](#-database-schema)
-- [Business Logic](#-business-logic)
-- [Testing](#-testing)
-- [Project Structure](#-project-structure)
-- [Environment Variables](#-environment-variables)
+**Every single day looks like this:**
 
----
+```
+Morning  → Owner opens shop. No idea of exact stock levels.
+           "Maggi khatam hua ya nahi?" — physical check required.
 
-## ✨ Features
+Day      → Wholesale customer arrives. Bill created on paper.
+           Stock? Not tracked. Evening stock levels — unknown.
 
-### **Core Modules**
+Purchase → Supplier delivers 100 Maggi packets.
+           No record of when it'll run out. Next order = pure guesswork.
 
-#### 🔐 **Authentication**
-- JWT-based authentication
-- Role-based access (Owner, Staff)
-- Secure password hashing (bcrypt)
-- Token validation middleware
+Night    → No summary of what sold. Same confusion tomorrow.
+```
 
-#### 📦 **Product Management (Phase 2 Multi-Unit)**
-- **Multi-unit hierarchy**: Piece → Packet → Carton
-- **Conversion chains**: 1 Carton = 6 Packets = 144 Pieces
-- **Variation-based selling**: Sell in any unit
-- **Stock tracking**: Always in base unit (pieces)
-- **MSP auto-derivation**: Set one MSP, others auto-calculate
-- **Cost price tracking**: Per base unit
+**This creates real financial damage:**
 
-#### 💰 **Billing / Sales (Phase 2)**
-- **Variation selection**: Choose which unit to sell
-- **Real-time stock warnings**: Non-blocking overselling alerts
-- **Price validation**: 
-  - ❌ Block if price < cost
-  - ⚠️ Warn if price < MSP
-- **Line total negotiation**: Edit total, effective price auto-calculates
-- **Bill-level discount**: With cost protection
-- **Temporary products**: Quick add for rush hour
-- **Stock deduction**: Automatic in base unit
+| Problem | Impact |
+|---|---|
+| Stock-outs on wholesale orders | Lost sale + disappointed retailer customer |
+| Over-ordering from suppliers | ₹ stuck in slow-moving inventory |
+| Selling below cost (manual mental math) | Direct revenue leakage |
+| 3–4 hours/day on registers | Time that can't be recovered |
+| **Total monthly loss** | **₹2,000–3,000 (10–15% of monthly profit)** |
 
-#### 📥 **Purchase Management (Phase 2)**
-- **Variation-based purchasing**: Buy in any unit
-- **Cost change detection**: Automatic MSP review workflow
-- **MSP review modal**: When cost increases
-- **Suggested MSP**: Auto-calculated with margin
-- **Stock addition**: Automatic in base unit
-- **Purchase history**: Complete audit trail
-
-#### 📊 **Dashboard & Reports**
-- Today's sales summary
-- Low stock alerts
-- Product statistics
-- Revenue tracking
+The core issue: pen-paper breaks completely when you're managing 200–500 SKUs across dual business models. The human brain cannot track this complexity reliably.
 
 ---
 
-## 🛠 Tech Stack
+## The Solution
 
-### **Backend**
-- **Runtime**: Node.js (v18+)
-- **Framework**: Express.js
-- **Database**: MongoDB (Mongoose ODM)
-- **Authentication**: JWT (jsonwebtoken)
-- **Password**: bcrypt
-- **Validation**: Express validator
-- **Testing**: Jest + Supertest
+**SmartKirana automates stock tracking through daily billing and purchase operations — no separate manual counting needed.**
 
-### **Architecture Pattern**
-- **MVC Architecture**
-- **Repository Pattern**
-- **Service Layer**
-- **Transaction Management**
+```
+SALE HAPPENS           PURCHASE HAPPENS
+      ↓                       ↓
+ Create bill            Record purchase
+      ↓                       ↓
+Stock AUTO-deducts     Stock AUTO-adds
+      ↓                       ↓
+Know exact stock       Know exact stock
+     anytime               anytime
+```
+
+**Core value delivered:**
+- Know exact stock levels anytime, across any unit (piece / packet / carton)
+- Make data-driven purchase decisions — not guesswork
+- Prevent selling below cost automatically
+- Low-stock alerts before stock-outs happen
+
+**Status:** Built, not yet deployed. Production-ready backend with 120+ integration tests. Customer pilots pending.
 
 ---
 
-## 🏗 Architecture
+## Architecture
+
+4-layer clean architecture with explicit Middleware and Model layers
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     CLIENT                              │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Express Routes                         │
-│  /api/auth  /api/products  /api/bills  /api/purchases   │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                   Controllers                           │
-│      (Request validation, Response formatting)          │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                    Services                             │
-│   (Business logic, Transactions, MSP calculations)      │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Repositories                           │
-│          (Database operations, Queries)                 │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                    MongoDB                               │
-│  Products | Bills | Purchases | Users | TempProducts    │
-└─────────────────────────────────────────────────────────┘
+Client Request
+      │
+      ▼
+┌─────────────────────────────────────────┐
+│  Express Routes                         │  ← Route definition only. No logic here.
+│  /auth  /products  /bills  /purchases   │
+│  /temporary-products  /reports          │
+└───────────────────┬─────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│  Middleware                             │  ← Runs before every protected route
+│  auth.js      → JWT verify             │
+│  validate.js  → Joi schema guard        │
+│  errorHandler → Centralized AppError   │
+│  notFound     → 404 catch-all          │
+└───────────────────┬─────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│  Controllers  (thin layer)              │  ← Only: extract req data, call service, send response
+└───────────────────┬─────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│  Services  (all business logic)         │  ← Transactions, price validation, MSP logic
+└───────────────────┬─────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│  Repositories  (Mongoose abstraction)   │  ← Singleton pattern. Session-aware. DB-swap ready.
+└───────────────────┬─────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│  Models  (Mongoose schemas)             │
+│  User · Product · Bill · Purchase       │
+│  TemporaryProduct                       │
+└───────────────────┬─────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│  MongoDB                                │
+└─────────────────────────────────────────┘
 ```
+
+**Why this matters:** Controllers have zero business logic. Services have zero HTTP awareness. Everything is independently testable and swappable.
 
 ---
 
-## 🚀 Installation
+## Tech Stack
 
-### **Prerequisites**
-- Node.js v18+
-- MongoDB v6+
-- npm or yarn
-
-### **Steps**
-
-1. **Clone Repository**
-```bash
-git clone https://github.com/yourusername/smartkirana-backend.git
-cd smartkirana-backend
-```
-
-2. **Install Dependencies**
-```bash
-npm install
-```
-
-3. **Setup Environment**
-```bash
-cp .env.example .env
-# Edit .env with your values
-```
-
-4. **Start MongoDB**
-```bash
-# Local MongoDB
-mongod
-
-# Or use MongoDB Atlas (connection string in .env)
-```
-
-5. **Run Development Server**
-```bash
-npm run dev
-```
-
-6. **Run Tests**
-```bash
-npm test
-```
-
-Server runs on: `http://localhost:3000`
+| Layer | Choice | Why |
+|---|---|---|
+| Runtime | Node.js 18+ | Non-blocking I/O — right choice for billing-heavy concurrent ops |
+| Framework | Express.js 5.x | Minimal, composable, async error handling built-in |
+| Database | MongoDB + Mongoose | Flexible schema for variable product unit hierarchies |
+| Validation | Joi | Schema-level request guards with clean error maps |
+| Auth | JWT + bcrypt | Stateless auth — no session storage needed |
+| Testing | Jest + Supertest | 120+ integration tests with in-memory MongoDB replica set |
+| Security | Helmet + CORS | HTTP headers hardened by default |
 
 ---
 
-## 📡 API Documentation
+## Business Logic That Matters
 
-### **Authentication**
+This is where SmartKirana diverges from generic inventory tools. These decisions were made with ground-reality in mind.
 
-#### Register User
-```http
-POST /api/auth/register
-Content-Type: application/json
+### 1. Multi-Unit Stock Storage
 
-{
-  "name": "Ramesh Kumar",
-  "email": "ramesh@example.com",
-  "password": "securePass123",
-  "role": "owner"
-}
-```
-
-#### Login
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "ramesh@example.com",
-  "password": "securePass123"
-}
-
-Response: { "token": "jwt_token_here", "user": {...} }
-```
-
----
-
-### **Products (Phase 2)**
-
-#### Create Product (Multi-Unit)
-```http
-POST /api/products
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "productName": "Maggi Noodles",
-  "units": [
-    { "unitName": "piece", "isBaseUnit": true },
-    { "unitName": "packet", "isBaseUnit": false },
-    { "unitName": "carton", "isBaseUnit": false }
-  ],
-  "variations": [
-    {
-      "unitName": "piece",
-      "variationName": "Piece",
-      "containsQuantity": 1,
-      "containsUnitName": "piece",
-      "minSellingPrice": 5
-    },
-    {
-      "unitName": "packet",
-      "variationName": "Packet",
-      "containsQuantity": 24,
-      "containsUnitName": "piece",
-      "minSellingPrice": 120
-    },
-    {
-      "unitName": "carton",
-      "variationName": "Carton",
-      "containsQuantity": 6,
-      "containsUnitName": "packet",
-      "minSellingPrice": 700
-    }
-  ],
-  "minStockLevel": { "value": 720, "unit": "piece" }
-}
-```
-
-#### Get All Products
-```http
-GET /api/products
-Authorization: Bearer {token}
-
-Response: {
-  "data": [...products],
-  "pagination": { "current": 1, "pages": 1, "total": 10 }
-}
-```
-
-#### Get Product by ID
-```http
-GET /api/products/:id
-Authorization: Bearer {token}
-```
-
-#### Update Product MSP
-```http
-PUT /api/products/:id
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "mspUpdates": [
-    { "variationId": "...", "newMSP": 125 },
-    { "variationId": "...", "newMSP": 720 }
-  ]
-}
-```
-
----
-
-### **Bills / Sales (Phase 2)**
-
-#### Create Bill
-```http
-POST /api/bills
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "customerName": "Ramesh Retailers",
-  "items": [
-    {
-      "productId": "507f1f77bcf86cd799439011",
-      "variationId": "507f1f77bcf86cd799439012",
-      "quantity": 10,
-      "pricePerUnit": 120,
-      "lineTotal": 1150
-    }
-  ],
-  "discount": -50
-}
-
-Response: {
-  "success": true,
-  "data": {
-    "billId": "...",
-    "billNumber": "BILL-20250208-001",
-    "finalTotal": 1100,
-    "stockUpdates": [...],
-    "warnings": [...]
-  }
-}
-```
-
-#### Get Today's Bills
-```http
-GET /api/bills/today
-Authorization: Bearer {token}
-
-Response: {
-  "data": {
-    "summary": {
-      "totalBills": 5,
-      "totalRevenue": 5000,
-      "totalItems": 25
-    },
-    "bills": [...]
-  }
-}
-```
-
-#### Get Temporary Products
-```http
-GET /api/bills/temporary-products
-Authorization: Bearer {token}
-
-Response: {
-  "data": [
-    {
-      "productName": "New Biscuit",
-      "totalQuantitySold": 50,
-      "totalRevenue": 500,
-      "billIds": [...]
-    }
-  ]
-}
-```
-
----
-
-### **Purchases (Phase 2)**
-
-#### Create Purchase
-```http
-POST /api/purchases
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "supplierName": "XYZ Distributors",
-  "supplierBillNumber": "INV-2025-001",
-  "items": [
-    {
-      "productId": "507f1f77bcf86cd799439011",
-      "variationId": "507f1f77bcf86cd799439012",
-      "quantity": 10,
-      "costPricePerUnit": 600
-    }
-  ]
-}
-
-# If cost changed, returns:
-{
-  "code": "MSP_REVIEW_REQUIRED",
-  "details": {
-    "mspSuggestions": [
-      {
-        "productId": "...",
-        "productName": "Maggi Noodles",
-        "variations": [
-          {
-            "variationId": "...",
-            "variationName": "Carton",
-            "oldCost": 600,
-            "newCost": 720,
-            "currentMSP": 700,
-            "suggestedMSP": 792,
-            "status": "below_cost"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-#### Create Purchase with MSP Update
-```http
-POST /api/purchases
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "supplierName": "XYZ Distributors",
-  "items": [...],
-  "costPriceChanges": [
-    {
-      "productId": "...",
-      "variations": [
-        { "variationId": "...", "newMinSellingPrice": 800 }
-      ]
-    }
-  ]
-}
-```
-
-#### Get Purchase History
-```http
-GET /api/purchases
-Authorization: Bearer {token}
-
-Query params:
-  ?supplierName=XYZ
-  &productName=Maggi
-  &startDate=2025-01-01
-  &endDate=2025-12-31
-  &page=1
-  &limit=10
-```
-
----
-
-## 🗄 Database Schema
-
-### **Product Schema**
-```javascript
-{
-  productName: String,
-  
-  baseUnit: {
-    _id: ObjectId,
-    unitName: String  // "piece"
-  },
-  
-  units: [{
-    _id: ObjectId,
-    unitName: String,     // "piece", "packet", "carton"
-    isBaseUnit: Boolean
-  }],
-  
-  variations: [{
-    _id: ObjectId,
-    unitId: ObjectId,
-    variationName: String,      // "Packet"
-    containsQuantity: Number,   // 24
-    containsUnitId: ObjectId,
-    conversionToBase: Number,   // 24
-    minSellingPrice: Number     // 120
-  }],
-  
-  costPricePerBaseUnit: Number,  // 4.17
-  currentStock: Number,           // 1440 (always in base unit)
-  minStockLevel: Number,          // 720
-  
-  isActive: Boolean,
-  userId: ObjectId,
-  
-  timestamps: true
-}
-```
-
-### **Bill Schema**
-```javascript
-{
-  billNumber: String,      // "BILL-20250208-001"
-  billDate: Date,
-  customerName: String,
-  
-  items: [{
-    productId: ObjectId,
-    productName: String,
-    variationId: ObjectId,
-    variationName: String,
-    quantity: Number,
-    pricePerUnit: Number,
-    effectivePricePerUnit: Number,
-    lineTotal: Number,
-    stockBefore: Number,
-    stockAfter: Number,
-    stockDeducted: Number
-  }],
-  
-  subTotal: Number,
-  discount: Number,         // Can be negative (discount) or positive (charge)
-  finalTotal: Number,
-  
-  userId: ObjectId,
-  timestamps: true
-}
-```
-
-### **Purchase Schema**
-```javascript
-{
-  purchaseNumber: String,  // "PUR-20250208-001"
-  purchaseDate: Date,
-  supplierName: String,
-  supplierBillNumber: String,
-  
-  items: [{
-    productId: ObjectId,
-    productName: String,
-    variationId: ObjectId,
-    variationName: String,
-    quantity: Number,
-    costPricePerUnit: Number,
-    lineTotal: Number,
-    stockBefore: Number,
-    stockAfter: Number,
-    stockAdded: Number
-  }],
-  
-  totalAmount: Number,
-  costPriceUpdated: Boolean,
-  
-  userId: ObjectId,
-  timestamps: true
-}
-```
-
-### **TemporaryProduct Schema**
-```javascript
-{
-  productName: String,
-  totalQuantitySold: Number,
-  totalRevenue: Number,
-  billIds: [ObjectId],
-  isPendingSetup: Boolean,
-  userId: ObjectId,
-  timestamps: true
-}
-```
-
----
-
-## 🧠 Business Logic
-
-### **1. Multi-Unit Conversion System**
-
-**Concept**: Stock always stored in base unit (pieces)
+Stock is always stored in **base units** (e.g., pieces). Displayed in any variation — no conversion errors possible.
 
 ```
 Product: Maggi Noodles
-- Base Unit: Piece
-- 1 Packet = 24 Pieces
-- 1 Carton = 6 Packets = 144 Pieces
+  Base unit: Piece
 
-Stock: 1440 pieces (in database)
+  1 Packet  = 24 Pieces   → conversionToBase: 24
+  1 Carton  = 6 Packets   → conversionToBase: 144
+
+Database stores: 1440 pieces
 
 Display:
-- As Pieces: 1440 Pieces
-- As Packets: 60 Packets (1440 / 24)
-- As Cartons: 10 Cartons (1440 / 144)
+  10 Carton | 60 Packet | 1440 Piece   ← all correct, always
 
-Billing:
-- Sell 5 Packets → Deduct 120 pieces (5 × 24)
-- Sell 2 Cartons → Deduct 288 pieces (2 × 144)
-
-Purchase:
-- Buy 10 Cartons → Add 1440 pieces (10 × 144)
+Billing (sell 5 Packets):
+  Deduct = 5 × 24 = 120 pieces         ← single source of truth
 ```
 
-### **2. Price Validation (Bills)**
+### 2. Price Validation on Every Bill Item
 
 ```
-Flow:
-1. User enters: Qty = 10 Packets, Price = ₹110
+User enters: 10 Packets @ ₹110 each
 
-2. Calculate effective price:
-   - If lineTotal edited: effectivePrice = lineTotal / quantity
-   - Else: effectivePrice = pricePerUnit
+Step 1 — Effective price:
+  If lineTotal edited → effectivePrice = lineTotal ÷ qty
+  Else                → effectivePrice = pricePerUnit
 
-3. Get cost per variation:
-   - costPerUnit = costPricePerBaseUnit × conversionToBase
-   - For Packet: ₹4.17 × 24 = ₹100.08
+Step 2 — Cost check:
+  costPerPacket = costPerBaseUnit × conversionToBase
+                = ₹4 × 24 = ₹96
 
-4. Validate:
-   - If effectivePrice < costPerUnit → ❌ BLOCK (error)
-   - If effectivePrice < MSP → ⚠️ WARN (allow)
-   - Else → ✅ ALLOW
+Step 3 — Decision:
+  ₹110 > ₹96 (cost)    ✅ ALLOW
+  ₹110 < ₹120 (MSP)    ⚠️  WARN — price below minimum, but not blocked
 
-5. Response:
-   - Block: { error: "Cannot sell below cost" }
-   - Warn: { warnings: [{ type: "BELOW_MSP", ... }] }
+Result: Sale goes through with warning in response.
+Block only happens when price < cost. Owner keeps full control above that.
 ```
 
-### **3. Stock Warning (Non-blocking)**
+### 3. Non-Blocking Stock Warnings (Intentional Design)
 
 ```
-Flow:
-1. User wants: 15 Cartons
-2. Available stock: 1440 pieces = 10 Cartons
-3. Required stock: 15 × 144 = 2160 pieces
+Scenario: Wholesale customer wants 15 Cartons.
+Available stock: 1440 pieces = 10 Cartons only.
 
-4. Check: 2160 > 1440 → Insufficient
+❌ What generic software does: BLOCK the sale.
+✅ What SmartKirana does:
+  → Warn: "Only 10 Cartons available. Stock will go negative."
+  → Allow sale anyway.
 
-5. Response:
-   ⚠️ Warning: "Only 10 Cartons available. Will create negative stock."
-   
-6. Allow sale → Stock becomes: -720 pieces
-
-Why allow? Real-world scenario: Customer waiting, supplier coming tomorrow
+Why? Real ground reality:
+  Customer is waiting. Supplier is coming tomorrow.
+  Owner knows the situation. Software should not block business.
+  Stock shows -720 pieces → owner knows they have a pending order to receive.
 ```
 
-### **4. MSP Review Workflow (Purchases)**
+### 4. MSP Review Workflow on Cost Change
 
 ```
-Scenario: Cost increased
+Before: Cost per Carton = ₹600, MSP = ₹700
 
-Before:
-- Cost per Carton: ₹600 (₹4.17/piece)
-- MSP per Carton: ₹700
+New purchase at: ₹720 per Carton (supplier raised price)
 
-Purchase:
-- New cost per Carton: ₹720 (₹5/piece)
+Problem: MSP (₹700) < New Cost (₹720) → selling at loss
 
-Problem:
-- MSP (₹700) < New Cost (₹720) ❌
-- Cannot sell at loss!
-
-Solution:
-1. Backend detects cost change
-2. Returns: MSP_REVIEW_REQUIRED
-3. Frontend shows modal with:
-   - Old cost vs New cost
-   - Current MSP vs Suggested MSP
-   - Editable new MSP fields
-4. User updates MSPs
-5. Retry purchase with updated MSPs
-
-Auto-suggestion:
-- Suggested MSP = New Cost × 1.10 (10% margin)
-- For Carton: ₹720 × 1.10 = ₹792
+SmartKirana flow:
+  1. Detects cost change on purchase
+  2. Requires MSP update for ALL variations before completing purchase
+  3. Validates: new MSP must be > new cost for every variation
+  4. Suggests: newCost × 1.10 as starting point
+  5. Only then: updates cost + MSP + adds stock (atomic transaction)
 ```
 
-### **5. Bill-Level Discount Validation**
+### 5. Temporary Products — Rush Hour Billing
+
+When a product isn't in the system yet and a customer is waiting:
+
+```javascript
+// Bill item can be flagged as temporary
+{ isTemporary: true, productName: "New Biscuit XYZ", quantity: 5, pricePerUnit: 20 }
+
+// System creates a TemporaryProduct record tracking revenue + bill history
+// Owner converts it to a full product later (setup flow)
+// Bills that referenced it remain intact — no history broken
+```
+
+### 6. Bill-Level Discount with Cost Floor
 
 ```
-Items:
-- 10 Cartons @ ₹700 = ₹7000
-Sub Total: ₹7000
+10 Packets @ ₹120 = ₹1,200 (subTotal)
+Cost of goods sold  = ₹960
 
-Cost:
-- 10 Cartons × ₹600 = ₹6000
-
-User enters discount: -₹500
-Final Total: ₹6500
-
-Validation:
-- Final Total (₹6500) > Total Cost (₹6000) ✅ ALLOW
-
-User enters discount: -₹1500
-Final Total: ₹5500
-
-Validation:
-- Final Total (₹5500) < Total Cost (₹6000) ❌ BLOCK
-- Error: "Total below cost! Reduce discount."
+Discount: -₹500 → Final: ₹700  ✅ above cost, ALLOWED
+Discount: -₹300 → Final: ₹900  ✅ above cost, ALLOWED
+Discount: -₹350 → Final: ₹850  ❌ below cost ₹960, BLOCKED
 ```
 
 ---
 
-## 🧪 Testing
+## Features
 
-### **Run Tests**
+### Authentication
+- JWT stateless auth with 30-day tokens
+- bcrypt password hashing (12 rounds)
+- User enumeration attack prevention (same error for wrong email + wrong password)
+- Token expiry detection with clear messaging
+
+### Product Management
+- Multi-unit hierarchy with recursive conversion chain calculation
+- Circular dependency detection in variation chains
+- Soft delete (`isActive: false`) — billing history stays intact
+- Case-insensitive duplicate name prevention
+- Optional MSP at creation — set on first purchase
+- Compound indexes: `userId + productName (unique)`, `userId + isActive`, `userId + currentStock`
+
+### Billing / Sales
+- Variation-based item selection (sell in any unit)
+- Atomic bill creation — stock deduction + bill record in single MongoDB transaction
+- Same-product deductions aggregated before write (prevents concurrent conflicts)
+- Temporary product tracking auto-updates on bill creation
+- Line-total negotiation with effective price calculation
+- Non-blocking oversell with detailed warning payload
+
+### Purchase Management
+- Variation-based purchasing — buy in any unit
+- Cost change detection on every purchase
+- Forced MSP review when cost increases (blocks purchase until resolved)
+- Auto-suggested MSP at 10% margin above new cost
+- Atomic purchase + stock + MSP update in single transaction
+
+### Reports & Dashboard
+- Today's revenue + bill count
+- Weekly purchases summary
+- Low stock alerts (below `minStockLevel`)
+- Out-of-stock count
+- Pending temporary products count
+
+---
+
+## Quick Start
+
+**Prerequisites:** Node.js 18+, MongoDB 6+ (or Atlas URI)
+
 ```bash
-# All tests
+# Clone
+git clone https://github.com/mayank1327/smartkirana.git
+cd smartkirana
+
+# Install
+npm install
+
+# Environment setup
+cp .env.example .env
+# Edit .env — set MONGODB_URI and JWT_SECRET (min 32 chars)
+
+# Run dev server
+npm run dev
+# → http://localhost:3000
+
+# Health check
+curl http://localhost:3000/api/health
+
+# Run full test suite (120+ integration tests)
 npm test
-
-# Specific module
-npm test tests/integration/product.test.js
-npm test tests/integration/bill.test.js
-npm test tests/integration/purchase.test.js
-
-# Coverage
-npm test -- --coverage
 ```
-
-### **Test Coverage**
-```
-Products:   20+ tests (Create, List, Detail, Edit, Delete)
-Bills:      20+ tests (Create, Preview, Warnings, Validation)
-Purchases:  20+ tests (Create, MSP Review, History)
-Total:      60+ tests
-```
-
-### **Key Test Scenarios**
-- ✅ Multi-unit product creation
-- ✅ Variation-based billing
-- ✅ Price validation (cost/MSP)
-- ✅ Stock warnings (non-blocking)
-- ✅ Line total negotiation
-- ✅ Bill-level discount
-- ✅ MSP review workflow
-- ✅ Transaction atomicity
-- ✅ User isolation
 
 ---
 
-## 📂 Project Structure
+## API Documentation
+
+Full interactive docs available via Swagger UI (being added).
+
+### Core Endpoints
+
+| Module | Method | Endpoint | Description |
+|---|---|---|---|
+| Auth | POST | `/api/auth/register` | Register shop owner |
+| Auth | POST | `/api/auth/login` | Login, get JWT token |
+| Products | GET | `/api/products` | List products with stock display |
+| Products | POST | `/api/products` | Create multi-unit product |
+| Products | PUT | `/api/products/:id` | Update name / MSP / minStock |
+| Products | DELETE | `/api/products/:id` | Soft delete |
+| Bills | POST | `/api/bills` | Create bill → auto-deducts stock |
+| Bills | GET | `/api/bills` | List bills (filter by date, customer) |
+| Bills | GET | `/api/bills/:id` | Full bill detail |
+| Purchases | POST | `/api/purchases` | Record purchase → auto-adds stock |
+| Purchases | GET | `/api/purchases` | Purchase history with filters |
+| Temp Products | GET | `/api/temporary-products` | Pending setup list |
+| Temp Products | POST | `/api/temporary-products/:id/setup` | Convert to real product |
+| Reports | GET | `/api/reports/dashboard` | Stock alerts + today summary |
+| Reports | GET | `/api/reports/low-stock` | Low stock + out-of-stock report |
+| Reports | GET | `/api/reports/today-bills` | Today's bill list + revenue |
+| Reports | GET | `/api/reports/weekly-purchases` | This week's purchases |
+
+All routes except `/auth` require `Authorization: Bearer <token>` header.
+
+---
+
+## Environment Variables
+
+```env
+PORT=3000
+NODE_ENV=development
+
+MONGODB_URI=mongodb://localhost:27017/smartkirana
+# Or Atlas: mongodb+srv://user:pass@cluster.mongodb.net/smartkirana
+
+JWT_SECRET=your_secret_min_32_chars_here
+JWT_EXPIRE=30d
+```
+
+---
+
+## Testing
+
+```bash
+npm test                          # Full suite with coverage
+npm run test:integration          # Integration only
+npm run test:watch                # Watch mode
+
+# Module-specific
+npx jest tests/integration/Bill.test.js
+npx jest tests/integration/products.test.js
+npx jest tests/integration/purchases.test.js
+```
+
+**Test infrastructure:** In-memory MongoDB Replica Set (supports transactions in tests), isolated per-test user data, no external dependencies required.
+
+| Module | Tests | Coverage |
+|---|---|---|
+| Authentication | 13 | Register, login, validation, edge cases |
+| Products | 25 | CRUD, multi-unit, conversion chain, soft delete |
+| Bills | 35+ | Price validation, stock warnings, temp products, atomicity |
+| Purchases | 25+ | Cost change, MSP review, atomicity, validation |
+| Reports | 15+ | Dashboard, low-stock, today bills, weekly purchases |
+| Temp Products | 12+ | Setup flow, pending list, delete, user isolation |
+| **Total** | **120+** | Full integration coverage, isolated per-test DB |
+
+---
+
+## Key Design Decisions
+
+**Why stock in base units only?**
+Any other approach creates sync bugs. When a product is sold in packets and cartons on the same bill, both deductions must reduce the same value. One source of truth eliminates conversion drift.
+
+**Why soft delete?**
+Bills reference products by ID. Hard-deleting a product breaks historical bill records — a shopkeeper can never reconcile past sales. `isActive: false` keeps data integrity intact while removing the product from active flows.
+
+**Why MongoDB transactions for billing?**
+A bill that saves but fails to deduct stock is worse than no bill. These two writes must be atomic. If either fails, the transaction rolls back completely — no partial state ever persists.
+
+**Why no StockMovement model?**
+Bills and purchases already store `stockBefore`, `stockAfter`, and quantity per item. Adding a third model creates redundancy and a sync problem. The answer to "what happened to stock?" is always in the Bill or Purchase document itself.
+
+**Why non-blocking overselling?**
+A real kirana owner who says "I have stock coming tomorrow" should not be blocked by software. The system warns loudly but respects owner judgment. Negative stock is a visible signal, not a system failure.
+
+---
+
+## Project Structure
 
 ```
 smartkirana-backend/
 ├── src/
-│   ├── models/
-│   │   ├── User.js
-│   │   ├── Product.js          # Phase 2 multi-unit
-│   │   ├── Bill.js              # Phase 2 variation-based
-│   │   ├── Purchase.js          # Phase 2 MSP review
-│   │   └── TemporaryProduct.js
-│   │
-│   ├── controllers/
-│   │   ├── authController.js
-│   │   ├── productController.js
-│   │   ├── billController.js
-│   │   └── purchaseController.js
-│   │
-│   ├── services/
-│   │   ├── authService.js
-│   │   ├── productService.js    # Multi-unit logic
-│   │   ├── billService.js       # Price validation
-│   │   └── purchaseService.js   # MSP review
-│   │
-│   ├── repositories/
-│   │   ├── userRepository.js
-│   │   ├── productRepository.js
-│   │   ├── billRepository.js
-│   │   └── purchaseRepository.js
-│   │
-│   ├── routes/
-│   │   ├── authRoutes.js
-│   │   ├── productRoutes.js
-│   │   ├── billRoutes.js
-│   │   └── purchaseRoutes.js
-│   │
-│   ├── middleware/
-│   │   ├── authMiddleware.js
-│   │   └── errorHandler.js
-│   │
-│   ├── utils/
-│   │   └── validators.js
-│   │
-│   ├── config/
-│   │   └── database.js
-│   │
-│   └── app.js
-│
+│   ├── models/         # Mongoose schemas (Product, Bill, Purchase, User, TemporaryProduct)
+│   ├── controllers/    # Thin HTTP layer — extract, delegate, respond
+│   ├── services/       # All business logic — validation, transactions, calculations
+│   ├── repositories/   # DB abstraction — singleton pattern, session-aware
+│   ├── routes/         # Express routers with Joi middleware
+│   ├── middleware/      # auth.js, validate.js, errorHandler.js, notFound.js
+│   ├── validators/     # Joi schemas per module
+│   ├── utils/          # AppError, jwt, stockUtils, healthCheck
+│   └── config/         # DB connect, env validation (fails fast on missing secrets)
 ├── tests/
-│   ├── integration/
-│   │   ├── product.test.js
-│   │   ├── bill.test.js
-│   │   └── purchase.test.js
-│   │
-│   └── helpers/
-│       ├── authHelper.js
-│       └── productHelper.js
-│
+│   ├── integration/    # Full API tests — auth, products, bills, purchases, reports
+│   └── helpers/        # authHelper, productHelper (Maggi + Parle-G fixtures)
 ├── .env.example
-├── .gitignore
-├── package.json
-└── README.md
+└── server.js
 ```
 
 ---
 
-## 🔧 Environment Variables
+## Roadmap
 
-Create `.env` file:
+**Current (complete):**
+- [x] Multi-unit product system with recursive conversion
+- [x] Atomic billing with price + stock validation
+- [x] MSP review workflow on cost change
+- [x] Temporary products for rush-hour billing
+- [x] Dashboard + low-stock reports
+- [x] 120+ integration tests
 
-```env
-# Server
-PORT=3000
-NODE_ENV=development
-
-# Database
-MONGODB_URI=mongodb://localhost:27017/smartkirana
-# Or MongoDB Atlas:
-# MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/smartkirana
-
-# JWT
-JWT_SECRET=your_super_secret_key_here_min_32_chars
-JWT_EXPIRES_IN=7d
-
-# CORS (Optional)
-CORS_ORIGIN=http://localhost:5173
-```
-
----
-
-## 🚦 Status & Roadmap
-
-### **Phase 2 - COMPLETE** ✅
-- [x] Multi-unit product system
-- [x] Variation-based billing
-- [x] Price validation (cost/MSP)
-- [x] MSP review workflow
-- [x] Stock warnings
-- [x] Temporary products
-- [x] Comprehensive tests
-
-### **Future Enhancements** 🔜
-- [ ] Voice based Operations
-- [ ] Festival Mode Intelligence
-- [ ] Multi-location Inventory
-- [ ] Market Price Intelligence
-- [ ] AI Smart Alerts - 
-      - [ ] Predictive Reordering
-      - [ ] Smart Defaults
-      - [ ] Sales Trends & Insights 
+**Planned (post-MVP validation):**
+- [ ] React frontend dashboard — mobile-first, works on owner's phone browser
+- [ ] Voice-based operations — quick billing by speaking product names
+- [ ] Festival Mode Intelligence — demand surge detection, auto-suggested bulk ordering
+- [ ] Multi-location inventory — single owner, multiple shop branches
+- [ ] Market Price Intelligence — track competitor pricing trends
+- [ ] AI Smart Alerts
+  - [ ] Predictive reordering — alert before stock-out, not after
+  - [ ] Smart defaults — auto-fill prices based on purchase history
+  - [ ] Sales trends & insights — slow-movers, fast-movers, seasonal patterns
 
 ---
 
-## 📝 Key Decisions & Why
+## Author
 
-### **Why No StockMovement Model?**
-- Bill & Purchase records already contain movement history
-- Each item has: stockBefore, stockAfter, quantity
-- Single source of truth
-- Less complexity, easier debugging
+**Mayank Mehta** — B.Tech ECE, UIT RGPV Bhopal
 
-### **Why Stock in Base Unit?**
-- Consistency: One source of truth
-- Simplicity: No conversion errors
-- Flexibility: Display in any unit easily
-- Accuracy: Exact stock tracking
+I grew up watching my family run a Level 5 kirana — wholesale to local retailers by day, retail to walk-in customers in between. Stock was tracked in memory and on paper. Purchase orders were guesswork. Every month, money was leaking in ways no one could measure.
 
-### **Why Non-blocking Stock Warnings?**
-- Real-world: Customer waiting, can't refuse sale
-- Trust: Owner knows overselling, supplier coming
-- Flexibility: System doesn't dictate business
+SmartKirana started as a hackathon idea built from that reality. Every feature in this system — the non-blocking oversell, the MSP review workflow, the temporary product flow — traces back to an actual conversation I've had in that shop.
 
-### **Why MSP Review on Cost Change?**
-- Prevents selling at loss
-- Auto-suggests profitable MSP
-- Maintains margins automatically
-- Reduces manual errors
-
----
-
-## 🤝 Contributing
-
-```bash
-1. Fork repository
-2. Create feature branch: git checkout -b feature/amazing
-3. Commit changes: git commit -m 'Add amazing feature'
-4. Push branch: git push origin feature/amazing
-5. Open Pull Request
-```
-
----
-
-## 📄 License
-
-MIT License - See LICENSE file
-
----
-
-## 👨‍💻 Author
-
-**Mayank Mehta**
 - GitHub: [@mayank1327](https://github.com/mayank1327)
-- Email:  mayankmehta1327@gmail.com
+- Email: mayankmehta1327@gmail.com
+- LinkedIn: [linkedin.com/in/mayank1327](https://linkedin.com/in/mayank1327)
+- Medium: [medium.com/@mayank1327](https://medium.com/@mayank1327)
 
 ---
 
-## 🙏 Acknowledgments
+<div align="center">
 
-- MongoDB for excellent ODM (Mongoose)
-- Express.js for robust framework
-- JWT for secure authentication
-- Jest for comprehensive testing
-
----
-
-**Built with ❤️ for Kirana store owners across India** 🇮🇳
-
----
-
-## Quick Start Commands
-
-```bash
-# Install
-npm install
-
-# Development
-npm run dev
-
-# Production
-npm start
-
-# Test
-npm test
-
-# Test Coverage
-npm run test:coverage
-
-# Lint
-npm run lint
-```
-
-**Happy Coding! 🚀**
+**For the Level 5 kirana owner managing 200-500 SKUs on paper, guessing purchase orders, and losing ₹ every month without knowing why.** 🇮🇳
+</div>
