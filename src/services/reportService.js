@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const reportRepository = require('../repositories/reportRepository');
-const TemporaryProduct = require('../models/TemporaryProduct');
+const TemporaryProductRepository = require('../repositories/temporaryProductRepository');
 const { formatStockDisplay } = require('../utils/stockUtils');
 
 class ReportService {
@@ -75,8 +75,8 @@ class ReportService {
         }
       ]),
   
-      // Pending temp products
-      TemporaryProduct.countDocuments({ userId, isPendingSetup: true })
+      
+      TemporaryProductRepository.countDocuments({ userId, isPendingSetup: true })
     ]);
   
     return {

@@ -43,6 +43,12 @@ class TemporaryProductRepository {
       : TemporaryProduct.findByIdAndDelete(id);
   }
   
+  async countDocuments(filter = {}, session = null) {
+    return session
+      ? TemporaryProduct.countDocuments(filter).session(session)
+      : TemporaryProduct.countDocuments(filter);
+  }
+  
 }
 
 module.exports = new TemporaryProductRepository();
