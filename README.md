@@ -1,6 +1,6 @@
 <div align="center">
 
-# SmartKirana — Backend
+# SmartKirana — Backend 
 
 ### _Stock clarity for wholesale-first kirana shops_
 
